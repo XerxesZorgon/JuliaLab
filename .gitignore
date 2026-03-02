@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Data
+data/*
+!data/.gitkeep
+*.csv
+*.xlsx
+
+# Outputs
+output/*
+!output/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# eurAIka
+.euraika/cache/
+logs/
+
+# Node / Tauri frontend
+app/node_modules/
+app/dist/
+
+# Rust / Tauri backend
+app/src-tauri/target/
+
+# Tauri build outputs
+app/src-tauri/gen/
+
+# Julia
+*.ji
+*.jl.cov
+*.jl.mem

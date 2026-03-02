@@ -1,0 +1,17 @@
+# eurAIka Project Settings
+
+scratchpad:
+  enabled: true
+  language: julia
+  auto_start: false
+  preload_packages:
+    - Plots
+    - DifferentialEquations
+
+plotting:
+  default_style: default
+
+literature_monitor:
+  enabled: false
+  schedule: weekly
+  keywords: []
