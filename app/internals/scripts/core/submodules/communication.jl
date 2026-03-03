@@ -1,4 +1,4 @@
-# Compute42 Communication Infrastructure
+# JuliaLab Communication Infrastructure
 # Import required modules
 using Sockets
 using JSON
@@ -29,7 +29,7 @@ end
 function initialize_permanent_communication(pipe_name::String)
     try
         # Log the raw pipe name received
-        println(stderr, "Compute42: [PIPE_SETUP] Received pipe name: '", pipe_name, "'")
+        println(stderr, "JuliaLab: [PIPE_SETUP] Received pipe name: '", pipe_name, "'")
         
         # Convert pipe name to platform-specific format
         # On Windows: use named pipe format (\\.\pipe\name)
@@ -41,34 +41,34 @@ function initialize_permanent_communication(pipe_name::String)
             platform_pipe_name = "/tmp/" * pipe_name
         end
         
-        println(stderr, "Compute42: [PIPE_SETUP] Creating socket at: '", platform_pipe_name, "'")
+        println(stderr, "JuliaLab: [PIPE_SETUP] Creating socket at: '", platform_pipe_name, "'")
 
         # Create the named pipe/server socket
         global JJ_PERMANENT_SERVER = Sockets.listen(platform_pipe_name)
-        println(stderr, "Compute42: [PIPE_SETUP] Socket created successfully")
+        println(stderr, "JuliaLab: [PIPE_SETUP] Socket created successfully")
 
         # On Linux/Unix, verify socket file exists and give it a moment to be ready
         if !Sys.iswindows()
             # Check if socket file exists
             if isfile(platform_pipe_name) || ispath(platform_pipe_name)
-                println(stderr, "Compute42: [PIPE_SETUP] Socket file exists at: '", platform_pipe_name, "'")
+                println(stderr, "JuliaLab: [PIPE_SETUP] Socket file exists at: '", platform_pipe_name, "'")
             else
-                println(stderr, "Compute42: [PIPE_SETUP] WARNING: Socket file not found at: '", platform_pipe_name, "' (may be abstract namespace)")
+                println(stderr, "JuliaLab: [PIPE_SETUP] WARNING: Socket file not found at: '", platform_pipe_name, "' (may be abstract namespace)")
             end
             sleep(0.1)  # 100ms delay to ensure socket is ready
-            println(stderr, "Compute42: [PIPE_SETUP] Socket ready delay completed")
+            println(stderr, "JuliaLab: [PIPE_SETUP] Socket ready delay completed")
         end
 
         # Signal that the pipe is ready BEFORE accepting connections
-        println(stderr, "Compute42: TO_JULIA_PIPE_READY")
+        println(stderr, "JuliaLab: TO_JULIA_PIPE_READY")
 
         # Setup message handlers
         setup_message_handlers()
 
         # Accept a single connection from Rust
-        println(stderr, "Compute42: Waiting for connection from Rust...")
+        println(stderr, "JuliaLab: Waiting for connection from Rust...")
         global JJ_PERMANENT_SOCKET = Sockets.accept(JJ_PERMANENT_SERVER)
-        println(stderr, "Compute42: Connection accepted, starting message loop...")
+        println(stderr, "JuliaLab: Connection accepted, starting message loop...")
 
         # Start message handling loop in background
         # Use @async to run in background, but also ensure MESSAGE_LOOP_READY is emitted
@@ -76,13 +76,13 @@ function initialize_permanent_communication(pipe_name::String)
             try
                 handle_messages_loop()
             catch e
-                println(stderr, "Compute42: Error in message loop async task: ", sprint(showerror, e))
+                println(stderr, "JuliaLab: Error in message loop async task: ", sprint(showerror, e))
             end
         end
 
         return true
     catch e
-        println(stderr, "Compute42: Failed to initialize permanent communication: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to initialize permanent communication: ", sprint(showerror, e))
         return false
     end
 end
@@ -91,7 +91,7 @@ end
 function initialize_plot_communication(pipe_name::String)
     try
         # Log the raw pipe name received
-        println(stderr, "Compute42: [PIPE_SETUP] Received from_julia pipe name: '", pipe_name, "'")
+        println(stderr, "JuliaLab: [PIPE_SETUP] Received from_julia pipe name: '", pipe_name, "'")
         
         # Convert pipe name to platform-specific format
         # On Windows: use named pipe format (\\.\pipe\name)
@@ -103,26 +103,26 @@ function initialize_plot_communication(pipe_name::String)
             platform_pipe_name = "/tmp/" * pipe_name
         end
         
-        println(stderr, "Compute42: [PIPE_SETUP] Creating from_julia socket at: '", platform_pipe_name, "'")
+        println(stderr, "JuliaLab: [PIPE_SETUP] Creating from_julia socket at: '", platform_pipe_name, "'")
 
         # Create the named pipe/server socket for plot communication
         global JJ_PLOT_SERVER = Sockets.listen(platform_pipe_name)
-        println(stderr, "Compute42: [PIPE_SETUP] From_julia socket created successfully")
+        println(stderr, "JuliaLab: [PIPE_SETUP] From_julia socket created successfully")
 
         # On Linux/Unix, verify socket file exists and give it a moment to be ready
         if !Sys.iswindows()
             # Check if socket file exists
             if isfile(platform_pipe_name) || ispath(platform_pipe_name)
-                println(stderr, "Compute42: [PIPE_SETUP] From_julia socket file exists at: '", platform_pipe_name, "'")
+                println(stderr, "JuliaLab: [PIPE_SETUP] From_julia socket file exists at: '", platform_pipe_name, "'")
             else
-                println(stderr, "Compute42: [PIPE_SETUP] WARNING: From_julia socket file not found at: '", platform_pipe_name, "' (may be abstract namespace)")
+                println(stderr, "JuliaLab: [PIPE_SETUP] WARNING: From_julia socket file not found at: '", platform_pipe_name, "' (may be abstract namespace)")
             end
             sleep(0.1)  # 100ms delay to ensure socket is ready
-            println(stderr, "Compute42: [PIPE_SETUP] From_julia socket ready delay completed")
+            println(stderr, "JuliaLab: [PIPE_SETUP] From_julia socket ready delay completed")
         end
 
         # Signal that the from_julia pipe is ready BEFORE accepting connections
-        println(stderr, "Compute42: FROM_JULIA_PIPE_READY")
+        println(stderr, "JuliaLab: FROM_JULIA_PIPE_READY")
 
         # Accept a single connection from Rust
         global JJ_PLOT_SOCKET = Sockets.accept(JJ_PLOT_SERVER)
@@ -130,7 +130,7 @@ function initialize_plot_communication(pipe_name::String)
         # No need for plot data loop - plot socket is only for sending data to Rust
         return true
     catch e
-        println(stderr, "Compute42: Failed to initialize plot communication: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to initialize plot communication: ", sprint(showerror, e))
         return false
     end
 end
@@ -149,10 +149,10 @@ function send_message_to_backend(message::Dict)
             println(JJ_PLOT_SOCKET, message_json)
             flush(JJ_PLOT_SOCKET)
         else
-            println(stderr, "Compute42: No active from_julia socket connection")
+            println(stderr, "JuliaLab: No active from_julia socket connection")
         end
     catch e
-        println(stderr, "Compute42: Failed to send response via from_julia pipe: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to send response via from_julia pipe: ", sprint(showerror, e))
     end
 end
 

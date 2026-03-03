@@ -4,11 +4,8 @@ use log::{debug, error};
 use std::sync::Arc;
 use tauri::{Manager, path::BaseDirectory};
 
-use crate::updater_service::UpdaterService;
-
-// Keep only app-specific modules (commands wrappers, logger, updater, version helper)
+// Keep only app-specific modules (commands wrappers, logger, version helper)
 pub mod logger;
-pub mod updater_service;
 pub mod commands;
 pub mod error;
 pub mod state;
@@ -25,7 +22,7 @@ fn copy_demo_folder_to_appdata(app: &tauri::App) -> Result<(), String> {
     // Get AppData directory
     let app_data_dir = dirs::data_local_dir()
         .ok_or_else(|| "Failed to get AppData directory".to_string())?;
-    let demo_dest = app_data_dir.join("com.compute42.dev").join("demo");
+    let demo_dest = app_data_dir.join("org.julialab.ide").join("demo");
     
     // Only copy if demo folder doesn't exist
     if demo_dest.exists() {
@@ -127,10 +124,9 @@ use crate::commands::{
     syntax::{
         parse_julia_syntax, get_syntax_diagnostics, clear_syntax_cache, is_syntax_service_available,
     },
-    updater::{check_for_updates, download_and_install_update, get_app_version, get_update_info},
     generic::{
         activate_julia_project_process,
-        clear_compute42_depot,
+        clear_julialab_depot,
         close_terminal_session,
         create_new_julia_project,
         // Julia operations
@@ -205,7 +201,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .plugin(log_plugin_builder.build())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         // All state management removed - now using orchestrator
         .invoke_handler(tauri::generate_handler![
             start_orchestrator,
@@ -272,7 +267,7 @@ pub fn run() {
             // Storage management
             get_julia_storage_paths,
             get_depot_size_info,
-            clear_compute42_depot,
+            clear_julialab_depot,
             // Plot commands
             get_all_plots,
             get_plot,
@@ -316,11 +311,6 @@ pub fn run() {
             stop_file_server,
             get_file_server_url,
             is_file_server_running,
-            // Updater commands
-            check_for_updates,
-            download_and_install_update,
-            get_app_version,
-            get_update_info,
         ])
         .setup(move |app| {
             let app_handle = app.handle().clone();
@@ -390,19 +380,6 @@ pub fn run() {
             if let Err(e) = rx.recv_timeout(std::time::Duration::from_secs(10)) {
                 error!("[Lib] Timeout waiting for ActorSystem initialization: {}", e);
             }
-
-            // Set up update check coordination
-            // The update check thread will be spawned in frontend_ready_handshake
-            // after the UI is confirmed to be ready
-            let updater_service = UpdaterService::new(app_handle.clone());
-            app.manage(updater_service.clone());
-            
-            // Create a channel for update check coordination
-            // The receiver will be stored in app state, sender will be passed to frontend_ready_handshake
-            let (update_tx, update_rx) = std::sync::mpsc::channel::<()>();
-            app.manage(std::sync::Mutex::new(update_rx)); // Store receiver in app state
-            app.manage(update_tx); // Store sender in app state for frontend_ready_handshake
-            debug!("[Lib] Update check coordination channel created");
 
             Ok(())
         })

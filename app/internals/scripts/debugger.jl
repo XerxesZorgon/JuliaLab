@@ -1,4 +1,4 @@
-# Compute42 Custom Debugger
+# JuliaLab Custom Debugger
 # Uses JuliaInterpreter.jl directly for debugging
 # Integrated into main Julia process (setup.jl)
 #

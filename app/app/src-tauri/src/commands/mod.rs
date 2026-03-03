@@ -3,7 +3,6 @@ pub mod lsp;
 pub mod generic;
 pub mod plot;
 pub mod tab;
-pub mod updater;
 pub mod utils;
 pub mod files;
 pub mod projects;

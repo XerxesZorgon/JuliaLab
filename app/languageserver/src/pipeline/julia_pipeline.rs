@@ -150,7 +150,7 @@ impl JuliaPipeline {
         output_path: Option<PathBuf>,
     ) -> Result<PathBuf, LspError> {
         let data_dir = dirs::data_local_dir()
-            .map(|dir| dir.join("com.compute42.dev"))
+            .map(|dir| dir.join("org.julialab.ide"))
             .unwrap_or_else(|| {
                 log::warn!("Failed to get user data directory, falling back to current directory");
                 PathBuf::from(".")
@@ -184,7 +184,7 @@ impl JuliaPipeline {
     #[deprecated(note = "Cache checking is now handled automatically in run(). Use run() instead.")]
     pub fn should_skip_base_indexing(&self) -> bool {
         let data_dir = dirs::data_local_dir()
-            .map(|dir| dir.join("com.compute42.dev"))
+            .map(|dir| dir.join("org.julialab.ide"))
             .unwrap_or_else(|| {
                 log::warn!("Failed to get user data directory, falling back to current directory");
                 PathBuf::from(".")
@@ -232,7 +232,7 @@ impl Pipeline for JuliaPipeline {
     fn run(&self, input: Self::Input) -> Result<Self::Output, LspError> {
         // Check cache first
         let data_dir = dirs::data_local_dir()
-            .map(|dir| dir.join("com.compute42.dev"))
+            .map(|dir| dir.join("org.julialab.ide"))
             .unwrap_or_else(|| {
                 log::warn!("Failed to get user data directory, falling back to current directory");
                 PathBuf::from(".")

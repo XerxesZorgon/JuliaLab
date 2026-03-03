@@ -7,7 +7,7 @@ use super::state::ProcessState;
 pub async fn create_julia_files(state: &ProcessState) -> Result<(), String> {
     use std::fs;
 
-    // Get the Compute42 data directory
+    // Get the JuliaLab data directory
     let data_dir = state.get_julia_data_directory();
     debug!("Creating Julia files in data directory: {:?}", data_dir);
     

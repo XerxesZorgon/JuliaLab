@@ -16,7 +16,7 @@ function handle_code_execution(data)
         # Log execution start
         start_time = time()
         code_length = length(code)
-        # println(stderr, "Compute42: [EXEC] Starting $(execution_type) - ID: $(id), Code length: $(code_length) bytes")
+        # println(stderr, "JuliaLab: [EXEC] Starting $(execution_type) - ID: $(id), Code length: $(code_length) bytes")
         
         # For FileExecution, also log the first few lines for context
         if execution_type == "FileExecution"
@@ -25,7 +25,7 @@ function handle_code_execution(data)
             preview_lines = min(3, num_lines)
             if preview_lines > 0
                 preview = join(code_lines[1:preview_lines], '\n')
-                # println(stderr, "Compute42: [EXEC] FileExecution preview (first $(preview_lines)/$(num_lines) lines):")
+                # println(stderr, "JuliaLab: [EXEC] FileExecution preview (first $(preview_lines)/$(num_lines) lines):")
                 # println(stderr, preview)
             end
         end
@@ -47,13 +47,13 @@ function handle_code_execution(data)
         
         if use_include_string
             # Use include_string for multi-line code blocks (handles all syntax properly)
-            # println(stderr, "Compute42: [EXEC] Executing multi-line code with Base.include_string...")
+            # println(stderr, "JuliaLab: [EXEC] Executing multi-line code with Base.include_string...")
             flush(stdout)
             
             result = Base.include_string(Main, code, "code_execution")
             
             flush(stdout)
-            # println(stderr, "Compute42: [EXEC] Multi-line execution completed successfully")
+            # println(stderr, "JuliaLab: [EXEC] Multi-line execution completed successfully")
         else
             # For single-line REPL input, use parse + eval
             ast = Base.parse_input_line(code, depwarn=false)
@@ -71,11 +71,11 @@ function handle_code_execution(data)
                     error("Debug execution should use Julia Debug Adapter, not main Julia process")
                 else
                     # For ReplExecution, use Core.eval for single expressions
-                    # println(stderr, "Compute42: [EXEC] Executing REPL expression with Core.eval...")
+                    # println(stderr, "JuliaLab: [EXEC] Executing REPL expression with Core.eval...")
                     flush(stdout)
                     result = Core.eval(Main, ast)
                     flush(stdout)
-                    # println(stderr, "Compute42: [EXEC] REPL execution completed successfully")
+                    # println(stderr, "JuliaLab: [EXEC] REPL execution completed successfully")
                 end
             end
         end
@@ -93,7 +93,7 @@ function handle_code_execution(data)
                     println(stdout)  # Add newline after show
                 catch e2
                     # Last resort: print type and error message
-                    println(stderr, "Compute42: Failed to print result: ", sprint(showerror, e2))
+                    println(stderr, "JuliaLab: Failed to print result: ", sprint(showerror, e2))
                     println(stdout, typeof(result), " (printing failed)")
                 end
             end
@@ -129,7 +129,7 @@ function handle_code_execution(data)
                     Base.invokelatest(display, result)
                 catch e
                     # If display fails, don't crash the execution
-                    println(stderr, "Compute42: Display failed: ", sprint(showerror, e))
+                    println(stderr, "JuliaLab: Display failed: ", sprint(showerror, e))
                 end
             end
         end
@@ -164,7 +164,7 @@ function handle_code_execution(data)
         end
 
         # Log execution completion with timing
-        # println(stderr, "Compute42: [EXEC] Completed $(execution_type) - ID: $(id), Duration: $(duration_ms)ms, Success: true")
+        # println(stderr, "JuliaLab: [EXEC] Completed $(execution_type) - ID: $(id), Duration: $(duration_ms)ms, Success: true")
 
         # Ensure execution_type is preserved correctly (especially for notebook cells)
         # execution_type should already be in the correct format from extraction
@@ -299,7 +299,7 @@ function handle_api_request(data)
                     Base.invokelatest(display, result)
                 catch e
                     # If display fails, don't crash the execution
-                    println(stderr, "Compute42: Display failed: ", sprint(showerror, e))
+                    println(stderr, "JuliaLab: Display failed: ", sprint(showerror, e))
                 end
             end
         end
@@ -397,7 +397,7 @@ function handle_connection_test(data)
         send_message_to_backend(response)
 
     catch e
-        println(stderr, "Compute42: Error handling connection test: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Error handling connection test: ", sprint(showerror, e))
 
         # Send error response (with safe field extraction)
         id = extract_optional_string(data, "id")

@@ -1,14 +1,14 @@
-# Compute42 Package Management
+# JuliaLab Package Management
 # Install and load required packages first
 # Only install packages if they're not already available
 
 try
     using Pkg
     
-    # Switch to default environment for Compute42 core packages
+    # Switch to default environment for JuliaLab core packages
     Pkg.activate()
     
-    # List of required packages for Compute42 core functionality
+    # List of required packages for JuliaLab core functionality
     required_packages = ["JuliaInterpreter", "JSON", "Revise"]
     
     # Check which packages are already installed in default environment
@@ -23,7 +23,7 @@ try
     
     # Only install missing packages
     if !isempty(packages_to_install)
-        println(stderr, "Compute42: Installing core packages: ", join(packages_to_install, ", "))
+        println(stderr, "JuliaLab: Installing core packages: ", join(packages_to_install, ", "))
         Pkg.add(packages_to_install)
     end
     
@@ -32,27 +32,27 @@ try
     needs_instantiate = false
     
     if !isfile(manifest_file)
-        println(stderr, "Compute42: Default environment Manifest.toml not found, running instantiate...")
+        println(stderr, "JuliaLab: Default environment Manifest.toml not found, running instantiate...")
         needs_instantiate = true
     else
         # Check if dependencies are properly installed
         try
             Pkg.status()
         catch e
-            println(stderr, "Compute42: Default environment package status check failed, running instantiate...")
+            println(stderr, "JuliaLab: Default environment package status check failed, running instantiate...")
             needs_instantiate = true
         end
     end
     
     if needs_instantiate
         Pkg.instantiate()
-        println(stderr, "Compute42: Core packages installed successfully")
+        println(stderr, "JuliaLab: Core packages installed successfully")
     else
-        println(stderr, "Compute42: Core packages already up to date")
+        println(stderr, "JuliaLab: Core packages already up to date")
     end
 catch e
     # Only print errors, not success messages
-    println(stderr, "Compute42: Failed to install packages: ", e)
+    println(stderr, "JuliaLab: Failed to install packages: ", e)
 end
 
 # Load required modules
@@ -250,9 +250,9 @@ try
     
     # Include debugger functionality
     include(joinpath(@__DIR__, "..", "debugger.jl"))
-    println(stderr, "Compute42: Debugger functionality loaded")
+    println(stderr, "JuliaLab: Debugger functionality loaded")
 catch e
-    println(stderr, "Compute42: Failed to load required modules: ", e)
+    println(stderr, "JuliaLab: Failed to load required modules: ", e)
 end
 
 

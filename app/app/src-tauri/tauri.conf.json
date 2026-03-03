@@ -57,28 +57,25 @@
     "linux": {
       "deb": {
         "files": {
-          "/usr/share/applications/compute42.desktop": "./linux/template.desktop",
-          "/usr/share/icons/hicolor/32x32/apps/compute42.png": "icons/32x32.png",
-          "/usr/share/icons/hicolor/128x128/apps/compute42.png": "icons/128x128.png",
-          "/usr/share/icons/hicolor/256x256/apps/compute42.png": "icons/256x256.png",
-          "/usr/share/icons/hicolor/512x512/apps/compute42.png": "icons/512x512.png"
+          "/usr/share/applications/julialab.desktop": "./linux/template.desktop",
+          "/usr/share/icons/hicolor/32x32/apps/julialab.png": "icons/32x32.png",
+          "/usr/share/icons/hicolor/128x128/apps/julialab.png": "icons/128x128.png",
+          "/usr/share/icons/hicolor/256x256/apps/julialab.png": "icons/256x256.png",
+          "/usr/share/icons/hicolor/512x512/apps/julialab.png": "icons/512x512.png"
         }
       },
       "rpm": {
         "files": {
-          "/usr/share/applications/compute42.desktop": "./linux/template.desktop",
-          "/usr/share/icons/hicolor/32x32/apps/compute42.png": "icons/32x32.png",
-          "/usr/share/icons/hicolor/128x128/apps/compute42.png": "icons/128x128.png",
-          "/usr/share/icons/hicolor/256x256/apps/compute42.png": "icons/256x256.png",
-          "/usr/share/icons/hicolor/512x512/apps/compute42.png": "icons/512x512.png"
+          "/usr/share/applications/julialab.desktop": "./linux/template.desktop",
+          "/usr/share/icons/hicolor/32x32/apps/julialab.png": "icons/32x32.png",
+          "/usr/share/icons/hicolor/128x128/apps/julialab.png": "icons/128x128.png",
+          "/usr/share/icons/hicolor/256x256/apps/julialab.png": "icons/256x256.png",
+          "/usr/share/icons/hicolor/512x512/apps/julialab.png": "icons/512x512.png"
         }
       }
     }
   },
   "plugins": {
-    "updater": {
-      "active": false
-    },
     "http": {
       "active": true,
       "scope": []

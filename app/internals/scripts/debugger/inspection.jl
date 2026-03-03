@@ -1,4 +1,4 @@
-# Compute42 Debugger Inspection
+# JuliaLab Debugger Inspection
 # Variable and stacktrace inspection utilities
 
 # Get variables from current frame or from Main module
@@ -149,16 +149,16 @@ function get_frame_variables(frame)
                 # Skip internal and module names
                 name_str = string(name)
                 
-                # Filter out Compute42 internal variables and Julia internals
-                # All Compute42 internal variables are prefixed with JJ_ for easy filtering
+                # Filter out JuliaLab internal variables and Julia internals
+                # All JuliaLab internal variables are prefixed with JJ_ for easy filtering
                 if startswith(name_str, "#") ||              # Julia compiler internals
                    startswith(name_str, "_") ||              # Julia internals
-                   startswith(name_str, "JJ_") ||            # Compute42 internal (debug state, plot config, etc.)
-                   startswith(name_str, "jj_") ||            # Compute42 internal (lowercase)
+                   startswith(name_str, "JJ_") ||            # JuliaLab internal (debug state, plot config, etc.)
+                   startswith(name_str, "jj_") ||            # JuliaLab internal (lowercase)
                    name_str == "JJ_CURRENT_FRAME" ||            # Debugger frame
                    name_str == "JJ_BREAKPOINTS" ||              # Debugger breakpoints
                    name_str == "JJ_LAST_STOP_REASON" ||         # Debugger state
-                   name_str == "Compute42Display" ||     # Custom display system
+                   name_str == "JuliaLabDisplay" ||     # Custom display system
                    name == :Main ||                          # Main module
                    name == :Core ||                          # Core module
                    name == :Base                             # Base module

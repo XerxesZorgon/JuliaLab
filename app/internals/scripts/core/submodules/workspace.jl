@@ -1,4 +1,4 @@
-# Compute42 Workspace Variable Inspection
+# JuliaLab Workspace Variable Inspection
 
 # Get workspace variables from Main module
 function get_workspace_variables()
@@ -29,7 +29,7 @@ function get_workspace_variables()
         builtin_names = Set([
             :Base, :Core, :Main, :InteractiveUtils, :REPL, :Pkg,
             :ans, :err, :stdout, :stderr, :stdin,
-            :Compute42Display, :JJ_PLOT_PANE_ENABLED, :JJ_DISPLAYABLE_MIMES,
+            :JuliaLabDisplay, :JJ_PLOT_PANE_ENABLED, :JJ_DISPLAYABLE_MIMES,
             :DEBUGGER_AVAILABLE, :varinfo, :whos,
             # Filter out functions we've defined in Main
             :should_filter_plot_data, :setup_display_system, :can_display_result, :is_table_like
@@ -42,9 +42,9 @@ function get_workspace_variables()
             # All Compute42 internal variables are prefixed with JJ_ for easy filtering
             if startswith(name_str, "#") ||              # Julia compiler internals
                startswith(name_str, "_") ||              # Julia internals
-               startswith(name_str, "JJ_") ||            # Compute42 internal (all internal variables)
-               startswith(name_str, "jj_") ||            # Compute42 internal (lowercase)
-               name_str == "Compute42Display" ||     # Custom display system
+               startswith(name_str, "JJ_") ||            # JuliaLab internal (all internal variables)
+               startswith(name_str, "jj_") ||            # JuliaLab internal (lowercase)
+               name_str == "JuliaLabDisplay" ||     # Custom display system
                name in builtin_names                     # Built-in modules and functions
                 continue
             end

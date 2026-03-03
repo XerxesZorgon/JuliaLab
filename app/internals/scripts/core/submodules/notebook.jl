@@ -20,7 +20,7 @@ function send_notebook_cell_output(cell_id, stream_type, content)
             flush(socket)
         end
     catch e
-        println(stderr, "Compute42: Failed to send notebook cell output: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to send notebook cell output: ", sprint(showerror, e))
     end
 end
 
@@ -49,7 +49,7 @@ function send_notebook_cell_plot(cell_id, mime_type, data)
             flush(socket)
         end
     catch e
-        println(stderr, "Compute42: Failed to send notebook cell plot: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to send notebook cell plot: ", sprint(showerror, e))
     end
 end
 
@@ -72,7 +72,7 @@ function send_notebook_cell_result(cell_id, result_string)
             flush(socket)
         end
     catch e
-        println(stderr, "Compute42: Failed to send notebook cell result: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to send notebook cell result: ", sprint(showerror, e))
     end
 end
 

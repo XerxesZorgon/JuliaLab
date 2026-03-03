@@ -48,8 +48,8 @@ impl LspActorState {
         // Calculate depot path (same logic as in generic.rs)
         let depot_path = dirs::data_local_dir()
             .map(|app_data_dir| {
-                let compute42_dir = app_data_dir.join("com.compute42.dev");
-                compute42_dir.join("depot")
+                let julialab_dir = app_data_dir.join("org.julialab.ide");
+                julialab_dir.join("depot")
             });
         
         let lsp_service = LspService::new(default_julia_path, None, depot_path);

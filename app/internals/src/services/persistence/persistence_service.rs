@@ -19,13 +19,13 @@ impl FilePersistenceServiceImpl {
     /// Create a new file persistence service
     pub fn new() -> Result<Self, String> {
         // Check for test data directory environment variable (for integration tests)
-        let base_dir = if let Ok(test_dir) = std::env::var("COMPUTE42_TEST_DATA_DIR") {
+        let base_dir = if let Ok(test_dir) = std::env::var("JULIALAB_TEST_DATA_DIR") {
             let test_path = PathBuf::from(test_dir).join("config");
             test_path
         } else {
             let app_data_dir = dirs::data_local_dir()
                 .ok_or("Could not determine app data directory")?
-                .join("com.compute42.dev")
+                .join("org.julialab.ide")
                 .join("config");
             app_data_dir
         };

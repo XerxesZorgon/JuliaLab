@@ -10,7 +10,7 @@ pub async fn find_julia_executable(julia_version: Option<&str>) -> Result<String
     if let Some(bundled_path) = find_bundled_julia(julia_version) {
         Ok(bundled_path)
     } else {
-        Err("Bundled Julia not found. Please ensure Compute42 is properly installed.".to_string())
+        Err("Bundled Julia not found. Please ensure JuliaLab is properly installed.".to_string())
     }
 }
 
@@ -18,7 +18,7 @@ pub async fn find_julia_executable(julia_version: Option<&str>) -> Result<String
 fn find_bundled_julia(julia_version: Option<&str>) -> Option<String> {
     // Get the Julia installation directory
     let app_data_dir = dirs::data_local_dir().expect("Failed to get app data directory");
-    let julia_dir = app_data_dir.join("com.compute42.dev").join("julia");
+    let julia_dir = app_data_dir.join("org.julialab.ide").join("julia");
 
     // Use provided Julia version or default from centralized version
     let version = julia_version.unwrap_or(version::get_julia_version());

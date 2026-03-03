@@ -19,7 +19,7 @@ pub async fn index_handler() -> impl IntoResponse {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Compute42 File Server</title>
+            <title>JuliaLab File Server</title>
             <style>
                 body { font-family: Arial, sans-serif; margin: 40px; }
                 .container { max-width: 600px; margin: 0 auto; }
@@ -29,9 +29,9 @@ pub async fn index_handler() -> impl IntoResponse {
         </head>
         <body>
             <div class="container">
-                <h1>Compute42 File Server</h1>
+                <h1>JuliaLab File Server</h1>
                 <div class="info">
-                    <p>This server provides access to project files for the Compute42 IDE.</p>
+                    <p>This server provides access to project files for the JuliaLab IDE.</p>
                     <p>Use the following URL pattern to access files:</p>
                     <code>http://127.0.0.1:[port]/files/[relative-path]</code>
                 </div>

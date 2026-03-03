@@ -1,4 +1,4 @@
-# Compute42 Message Routing and Loop
+# JuliaLab Message Routing and Loop
 # Import required modules
 using JSON
 
@@ -56,7 +56,7 @@ function handle_debug_message(data)
         end
         
     catch e
-        println(stderr, "Compute42: Error handling debug message: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Error handling debug message: ", sprint(showerror, e))
         
         # Send error response (with safe field extraction)
         id = "unknown"
@@ -91,16 +91,16 @@ function handle_messages_loop()
     try
         # Check socket state before starting
         if JJ_PERMANENT_SOCKET === nothing
-            println(stderr, "Compute42: ERROR - JJ_PERMANENT_SOCKET is nothing in handle_messages_loop")
+            println(stderr, "JuliaLab: ERROR - JJ_PERMANENT_SOCKET is nothing in handle_messages_loop")
             return
         end
         if !isopen(JJ_PERMANENT_SOCKET)
-            println(stderr, "Compute42: ERROR - JJ_PERMANENT_SOCKET is not open in handle_messages_loop")
+            println(stderr, "JuliaLab: ERROR - JJ_PERMANENT_SOCKET is not open in handle_messages_loop")
             return
         end
         
         # Signal that the message loop is now actively running and ready to receive messages
-        println(stderr, "Compute42: MESSAGE_LOOP_READY")
+        println(stderr, "JuliaLab: MESSAGE_LOOP_READY")
         
         while JJ_PERMANENT_SOCKET !== nothing && isopen(JJ_PERMANENT_SOCKET)
             try
@@ -150,13 +150,13 @@ function handle_messages_loop()
                 end
 
             catch e
-                println(stderr, "Compute42: Error handling message: ", sprint(showerror, e))
+                println(stderr, "JuliaLab: Error handling message: ", sprint(showerror, e))
                 # Don't break on individual message errors, continue listening
             end
         end
 
     catch e
-        println(stderr, "Compute42: Fatal error in message handling loop: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Fatal error in message handling loop: ", sprint(showerror, e))
     end
 end
 

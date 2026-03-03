@@ -206,7 +206,7 @@ export default {
             background: '#1e1e1e',
             foreground: '#ffffff',
             cursor: '#ffffff',
-            selection: '#264f78',
+            selectionBackground: '#264f78',
           },
         });
         this.fitAddon = new FitAddon();

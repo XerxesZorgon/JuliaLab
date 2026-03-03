@@ -21,7 +21,7 @@ pub async fn download_julia_binary(
     // Test URL accessibility with HEAD request first
     debug!("[InstallationActor] Testing URL accessibility with HEAD request: {}", url);
     let client = reqwest::Client::builder()
-        .user_agent("Compute42/0.15.0")
+        .user_agent("JuliaLab/0.15.0")
         .build()
         .map_err(|e| {
             error!("[InstallationActor] Failed to create HTTP client: {:?}", e);

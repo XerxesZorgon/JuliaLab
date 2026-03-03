@@ -377,7 +377,7 @@ impl OrchestratorActor {
             self.transition_startup_phase(StartupPhase::Completed);
             self.state = OrchestratorState::Running;
             
-            let startup_message = "Compute42 initialization complete";
+            let startup_message = "JuliaLab initialization complete";
             self.event_manager
                 .emit_orchestrator_startup_ready(startup_message)
                 .await?;

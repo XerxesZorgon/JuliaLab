@@ -640,12 +640,12 @@ impl Handler<ActivateProject> for ExecutionActor {
                             end
                             
                             # Emit signal after activation, instantiate, and precompilation are complete
-                            println(stderr, "Compute42: PROJECT_ACTIVATION_COMPLETE")
+                            println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
                             
                             true
                         catch e
                             println("Failed to instantiate project: ", e)
-                            println(stderr, "Compute42: PROJECT_ACTIVATION_COMPLETE")
+                            println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
                             # Still emit complete signal even on error to allow startup to continue
                             # The error will be visible in the terminal
                             false

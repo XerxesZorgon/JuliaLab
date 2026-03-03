@@ -1,4 +1,4 @@
-# Compute42 Debugger State
+# JuliaLab Debugger State
 # Global debug state variables and constants
 
 # Global debug state

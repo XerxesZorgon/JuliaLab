@@ -1,12 +1,12 @@
-# Compute42 Debugger Display System
+# JuliaLab Debugger Display System
 # Display system for plot capture
 
 # Display system for plot capture
-struct Compute42Display <: AbstractDisplay
+struct JuliaLabDisplay <: AbstractDisplay
     is_repl::Bool
 end
 
-Compute42Display() = Compute42Display(false)
+JuliaLabDisplay() = JuliaLabDisplay(false)
 
 # Send display message to backend
 function send_display_msg(kind, data)
@@ -38,8 +38,8 @@ function send_display_msg(kind, data)
     end
 end
 
-# Display method for Compute42Display
-function Base.display(d::Compute42Display, m::MIME, @nospecialize(x))
+# Display method for JuliaLabDisplay
+function Base.display(d::JuliaLabDisplay, m::MIME, @nospecialize(x))
     if JJ_PLOT_PANE_ENABLED[]
         mime = string(m)
         if mime in JJ_DISPLAYABLE_MIMES
@@ -51,7 +51,7 @@ function Base.display(d::Compute42Display, m::MIME, @nospecialize(x))
 end
 
 # Display method for general objects
-function Base.display(d::Compute42Display, @nospecialize(x))
+function Base.display(d::JuliaLabDisplay, @nospecialize(x))
     if JJ_PLOT_PANE_ENABLED[]
         for mime in JJ_DISPLAYABLE_MIMES
             if showable(mime, x)
@@ -65,11 +65,11 @@ end
 # Setup display system
 function setup_display_system()
     for d in reverse(Base.Multimedia.displays)
-        if d isa Compute42Display
+        if d isa JuliaLabDisplay
             popdisplay(d)
         end
     end
-    pushdisplay(Compute42Display())
+    pushdisplay(JuliaLabDisplay())
 end
 
 

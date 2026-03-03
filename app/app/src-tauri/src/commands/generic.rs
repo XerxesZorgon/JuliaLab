@@ -682,62 +682,6 @@ pub async fn frontend_ready_handshake(
     use tauri::Manager;
     debug!("[OrchestratorCommands] Frontend ready handshake signal received");
     
-    // Spawn update check thread now that UI is confirmed ready
-    // Then wait for it to complete before continuing startup
-    if let (Some(update_tx), Some(update_rx)) = (
-        app_handle.try_state::<std::sync::mpsc::Sender<()>>(),
-        app_handle.try_state::<std::sync::Mutex<std::sync::mpsc::Receiver<()>>>()
-    ) {
-        debug!("[OrchestratorCommands] UI is ready, spawning update check thread...");
-        
-        // Get updater service from app state
-        let updater_service = app_handle.state::<crate::updater_service::UpdaterService>();
-        let updater_service_clone = updater_service.inner().clone();
-        let update_tx_clone = update_tx.inner().clone();
-        
-        // Spawn update check thread - it will signal when done
-        std::thread::spawn(move || {
-            debug!("[OrchestratorCommands] Update check thread started");
-            
-            debug!("[OrchestratorCommands] Creating Tokio runtime for update check...");
-            let rt = tokio::runtime::Runtime::new()
-                .expect("Failed to create tokio runtime for update check");
-            
-            debug!("[OrchestratorCommands] Running update check in Tokio runtime...");
-            rt.block_on(async {
-                debug!("[OrchestratorCommands] Calling check_for_updates_blocking...");
-                match updater_service_clone.check_for_updates_blocking().await {
-                    Ok(_) => {
-                        debug!("[OrchestratorCommands] Update check completed successfully");
-                    }
-                    Err(e) => {
-                        debug!("[OrchestratorCommands] Update check completed with error: {}", e);
-                    }
-                }
-                debug!("[OrchestratorCommands] Update check thread finishing, sending continue signal...");
-            });
-            
-            // Send continue signal to main thread
-            let _ = update_tx_clone.send(());
-            debug!("[OrchestratorCommands] Update check thread exited");
-        });
-        
-        debug!("[OrchestratorCommands] Update check thread spawned, waiting for completion...");
-        // Wait for the update check thread to signal completion
-        // This will block until: no update found, user skips, or user installs (app will restart)
-        let rx = update_rx.lock().unwrap();
-        match rx.recv() {
-            Ok(_) => {
-                debug!("[OrchestratorCommands] Update check completed, transitioning orchestrator to WaitingForAuth");
-            }
-            Err(e) => {
-                debug!("[OrchestratorCommands] Error waiting for update check: {:?}, continuing anyway", e);
-            }
-        }
-    } else {
-        debug!("[OrchestratorCommands] Update check coordination not found, skipping update check");
-    }
-    
     // Don't initialize actors here - the startup state machine will handle initialization
     // AccountActor will be initialized when entering WaitingForAuth state
     // InstallationActor will be initialized when entering CheckingJulia state
@@ -1077,9 +1021,9 @@ pub async fn get_julia_storage_paths(
     let app_data_dir = dirs::data_local_dir()
         .ok_or_else(|| "Failed to get app data directory".to_string())?;
     
-    let compute42_dir = app_data_dir.join("com.compute42.dev");
-    let julia_depot_path = compute42_dir.join("depot");
-    let lsp_env_path = compute42_dir.join("lsp-env");
+    let julialab_dir = app_data_dir.join("org.julialab.ide");
+    let julia_depot_path = julialab_dir.join("depot");
+    let lsp_env_path = julialab_dir.join("lsp-env");
     
     // Get Julia installation path from installation actor
     let julia_path = app_state.actor_system
@@ -1102,11 +1046,11 @@ pub async fn get_julia_storage_paths(
             "path": julia_path,
             "exists": std::path::Path::new(&julia_path).exists()
         },
-        "compute42_depot": {
+        "julialab_depot": {
             "path": julia_depot_path.to_string_lossy(),
             "exists": julia_depot_path.exists()
         },
-        "compute42_env": {
+        "julialab_env": {
             "path": lsp_env_path.to_string_lossy(),
             "exists": lsp_env_path.exists()
         },
@@ -1189,8 +1133,8 @@ pub async fn get_depot_size_info(
     let app_data_dir = dirs::data_local_dir()
         .ok_or_else(|| "Failed to get app data directory".to_string())?;
     
-    let compute42_dir = app_data_dir.join("com.compute42.dev");
-    let julia_depot_path = compute42_dir.join("depot");
+    let julialab_dir = app_data_dir.join("org.julialab.ide");
+    let julia_depot_path = julialab_dir.join("depot");
     
     // Get default Julia depot path
     let default_depot_path = std::env::var("JULIA_DEPOT_PATH").unwrap_or_else(|_| {
@@ -1201,14 +1145,14 @@ pub async fn get_depot_size_info(
     });
 
     // Calculate directory sizes
-    let juliajunction_size = calculate_directory_size(&julia_depot_path).await;
+    let julialab_size = calculate_directory_size(&julia_depot_path).await;
     let default_depot_size = calculate_directory_size(std::path::Path::new(&default_depot_path)).await;
 
     let sizes = serde_json::json!({
-        "compute42_depot": {
+        "julialab_depot": {
             "path": julia_depot_path.to_string_lossy(),
-            "size_bytes": juliajunction_size,
-            "size_human": format_size(juliajunction_size)
+            "size_bytes": julialab_size,
+            "size_human": format_size(julialab_size)
         },
         "default_depot": {
             "path": default_depot_path,
@@ -1222,7 +1166,7 @@ pub async fn get_depot_size_info(
 
 /// Clear JuliaJunction depot
 #[tauri::command]
-pub async fn clear_compute42_depot(
+pub async fn clear_julialab_depot(
     app_state: State<'_, AppState>,
 ) -> Result<Value, String> {
     debug!("[OrchestratorCommands] Clearing JuliaJunction depot");
@@ -1260,9 +1204,9 @@ pub async fn clear_compute42_depot(
     let app_data_dir = dirs::data_local_dir()
         .ok_or_else(|| "Failed to get app data directory".to_string())?;
     
-    let compute42_dir = app_data_dir.join("com.compute42.dev");
-    let julia_depot_path = compute42_dir.join("depot");
-    let lsp_env_path = compute42_dir.join("lsp-env");
+    let julialab_dir = app_data_dir.join("org.julialab.ide");
+    let julia_depot_path = julialab_dir.join("depot");
+    let lsp_env_path = julialab_dir.join("lsp-env");
 
     let mut cleared_items = Vec::new();
     let mut errors = Vec::new();

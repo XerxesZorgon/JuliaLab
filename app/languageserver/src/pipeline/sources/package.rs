@@ -278,7 +278,7 @@ impl PackageSource {
     /// Get package cache directory path
     fn get_package_cache_dir() -> PathBuf {
         dirs::data_local_dir()
-            .map(|dir| dir.join("com.compute42.dev").join("package_cache"))
+            .map(|dir| dir.join("org.julialab.ide").join("package_cache"))
             .unwrap_or_else(|| {
                 log::warn!("Failed to get user data directory, falling back to current directory");
                 PathBuf::from(".").join("package_cache")

@@ -760,7 +760,7 @@ async fn read_from_julia_messages(
                             elapsed.as_secs_f64(),
                             e
                         );
-                        let error_msg = "The connection to Julia has been lost. Please restart Compute42 to reconnect.";
+                        let error_msg = "The connection to Julia has been lost. Please restart JuliaLab to reconnect.";
                         if let Err(emit_err) = event_manager.emit_system_error(error_msg).await {
                             error!("[CommunicationActor::Connection] Failed to emit system error: {}", emit_err);
                         }

@@ -16,7 +16,6 @@
     "process:default",
     "core:path:allow-join",
     "core:path:default",
-    "updater:default",
     "http:default"
   ]
 }

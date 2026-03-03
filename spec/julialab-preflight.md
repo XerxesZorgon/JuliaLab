@@ -11,14 +11,14 @@ expensive backtracking later.
 
 ### 1.1 — Dev Environment Verification (Do This First)
 
-Before forking Compute42, confirm you can actually build a Tauri 2 app on your machine.
+Before forking JuliaLab, confirm you can actually build a Tauri 2 app on your machine.
 This is often the biggest time sink and should be de-risked immediately.
 
 **Checklist:**
 
 - [ ] **Rust toolchain**: `rustup show` returns stable ≥ 1.75. If not: `rustup update stable`
 - [ ] **Node.js**: `node --version` returns 18.x or 20.x LTS. (Tauri 2 requires ≥ 18)
-- [ ] **pnpm or npm**: Compute42 uses `npm`. Check `package.json` for the package manager.
+- [ ] **pnpm or npm**: JuliaLab uses `npm`. Check `package.json` for the package manager.
 - [ ] **Tauri CLI**: `cargo install tauri-cli` or `npm install -g @tauri-apps/cli`
 - [ ] **Platform-specific Tauri prereqs** verified:
   - Windows: WebView2 runtime installed (ships with Windows 11; manual install on Win 10)
@@ -28,14 +28,14 @@ This is often the biggest time sink and should be de-risked immediately.
 - [ ] **Git**: `git --version` works
 - [ ] **Gemini CLI** (optional at this stage): `gemini --version` or defer to Phase 6
 
-**The smoke test**: Clone Compute42, run `npm install && npm run tauri dev`, confirm
+**The smoke test**: Clone JuliaLab, run `npm install && npm run tauri dev`, confirm
 a window opens. If this fails, fix it before creating JuliaLab.
 
 ---
 
 ### 1.2 — Repository Setup
 
-- [ ] Fork `https://github.com/elan8/compute42` to your GitHub account as `julialab`
+- [ ] Fork `https://github.com/elan8/julialab` to your GitHub account as `julialab`
 - [ ] Clone locally: `git clone https://github.com/YOUR_USERNAME/julialab.git`
 - [ ] Create `CLAUDE.md` in the repo root (see Section 3 below for contents)
 - [ ] Place `constitution.md` at `.specify/constitution.md`
@@ -45,7 +45,7 @@ a window opens. If this fails, fix it before creating JuliaLab.
 
 ---
 
-### 1.3 — Understand the Compute42 Codebase Before Changing Anything
+### 1.3 — Understand the JuliaLab Codebase Before Changing Anything
 
 This is the single most important pre-flight item. Many expensive mistakes come
 from agents (and humans) starting to modify code they don't yet understand.
@@ -76,7 +76,7 @@ This gives mouse interaction (zoom, pan, rotate) but requires a running WebSocke
 server from Julia. The simpler alternative is to have Julia export PNG/SVG and
 display it as an `<img>` tag.
 
-*Recommendation*: Use PNG/SVG for Phase 1–2 (simpler, already partially in Compute42),
+*Recommendation*: Use PNG/SVG for Phase 1–2 (simpler, already partially in JuliaLab),
 add WGLMakie WebSocket for Phase 3 when you build the figure system.
 
 **B) Workspace variable serialization format**
@@ -102,7 +102,7 @@ for reliability. Never use Option 1.
 Julia's TextMate grammar is maintained at:
 `https://github.com/julia-vscode/julia-vscode/blob/master/syntaxes/julia.json`
 
-Compute42 likely already bundles this. Verify which version and plan for updates.
+JuliaLab likely already bundles this. Verify which version and plan for updates.
 
 **E) App identity (name, bundle ID, window title)**
 
@@ -207,7 +207,7 @@ Review the generated spec.md template and confirm it was created at
 ### Step 2 — Codebase Orientation (CRITICAL — Do This Before Any Changes)
 
 ```
-Read the entire Compute42 project structure thoroughly. I need you to produce a
+Read the entire JuliaLab project structure thoroughly. I need you to produce a
 written report covering exactly these questions, with file paths for every answer:
 
 1. How is the Julia subprocess spawned and managed? Which Rust file and which Actix
@@ -236,7 +236,7 @@ written report covering exactly these questions, with file paths for every answe
    described in the constitution? Give me a ranked list from "most work" to
    "least work".
 
-10. Are there any known issues, TODOs, or unfinished features in Compute42 that
+10. Are there any known issues, TODOs, or unfinished features in JuliaLab that
     would affect JuliaLab's Phase 1 work?
 
 Format your report as a markdown document and save it to .specify/codebase-audit.md.
@@ -322,7 +322,7 @@ After generation, open .specify/tasks/001-julialab-core/tasks.md and verify:
    criterion from the constitution.
 
 3. The first 3 tasks should be:
-   - Task 1: Rename/rebrand Compute42 → JuliaLab in tauri.conf.json, package.json,
+   - Task 1: Rename/rebrand JuliaLab → JuliaLab in tauri.conf.json, package.json,
      window title, and create the JuliaLab icon
    - Task 2: Implement the 4-panel layout in the main Vue component
    - Task 3: Implement the ribbon tab bar and the HOME tab button groups
@@ -346,7 +346,7 @@ Create a CLAUDE.md file in the project root with the following content:
 # CLAUDE.md — JuliaLab Session Memory
 
 ## Project
-JuliaLab: MATLAB-inspired Julia IDE. Fork of Compute42 (Tauri 2 + Vue 3 + Actix).
+JuliaLab: MATLAB-inspired Julia IDE. Fork of JuliaLab (Tauri 2 + Vue 3 + Actix).
 
 ## Current Phase
 Phase 1 — Foundation
@@ -410,7 +410,7 @@ Save CLAUDE.md and confirm it was written correctly.
 
 ```
 We are ready to begin implementation. Start with Task 1 from
-.specify/tasks/001-julialab-core/tasks.md: rebrand Compute42 to JuliaLab.
+.specify/tasks/001-julialab-core/tasks.md: rebrand JuliaLab to JuliaLab.
 
 Before making changes, list every file that contains the string "compute42" or
 "Compute42" (case-insensitive). Then:
@@ -512,13 +512,13 @@ These are known issues likely to waste hours if not anticipated.
 
 | # | Gotcha | How to Avoid |
 |---|--------|-------------|
-| 1 | **Tauri 2 breaking changes from v1** | Compute42 may target Tauri 1.x. Check `src-tauri/Cargo.toml`. If it's Tauri 1, upgrade to 2 as the very first task — the API changes are significant. |
+| 1 | **Tauri 2 breaking changes from v1** | JuliaLab may target Tauri 1.x. Check `src-tauri/Cargo.toml`. If it's Tauri 1, upgrade to 2 as the very first task — the API changes are significant. |
 | 2 | **Julia startup time** | Julia's JIT means first execution is slow. Never report "Julia is broken" until you've waited 30 seconds and tried a second command. |
 | 3 | **Revise.jl type redefinition** | Revise cannot reload a changed struct definition. Build a UI notification that detects this error and offers "Restart Julia session". |
-| 4 | **Monaco + Vue reactivity** | Monaco manages its own DOM. Use an editor instance ref, not v-model. The existing Compute42 integration handles this — don't re-implement it. |
+| 4 | **Monaco + Vue reactivity** | Monaco manages its own DOM. Use an editor instance ref, not v-model. The existing JuliaLab integration handles this — don't re-implement it. |
 | 5 | **WGLMakie WebSocket port conflicts** | WGLMakie starts its own server. If the port is in use, plots silently fail. Reserve a port range and pass it to WGLMakie via `Makie.set_window_config!(port=XXXX)`. |
 | 6 | **Windows path separators** | All Julia `include()` and file paths from Tauri must use forward slashes or `joinpath()`. Backslash paths will fail on Windows inside Julia strings. |
 | 7 | **Tauri allowlist** | Tauri 2 requires explicit permission for every filesystem, shell, and window operation in `tauri.conf.json`. Forgetting this causes silent failures with no error. |
 | 8 | **IBM Plex fonts offline** | Google Fonts requires internet. Bundle IBM Plex Mono and Sans as local font files for offline use. |
 | 9 | **Gemini CLI auth** | `gemini auth` opens a browser. In headless CI, this hangs. Ensure the AI pane is never initialized in test/CI environments. |
-| 10 | **Naive UI tree shaking** | Import Naive UI components individually to avoid bundling the entire library. Check Compute42's existing import pattern first. |
+| 10 | **Naive UI tree shaking** | Import Naive UI components individually to avoid bundling the entire library. Check JuliaLab's existing import pattern first. |

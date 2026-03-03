@@ -1,4 +1,4 @@
-# Compute42 Debugger Handlers
+# JuliaLab Debugger Handlers
 # All message handler functions
 
 # Message handlers
@@ -202,7 +202,7 @@ function handle_start_debug(data)
                                     global JJ_LAST_STOP_REASON = "breakpoint"
                                     
                                     # Wait loop - check for continue signal
-                                    marker_path = joinpath(tempdir(), "compute42_debug_continue.marker")
+                                    marker_path = joinpath(tempdir(), "julialab_debug_continue.marker")
                                     wait_start_time = time()
                                     while JJ_DEBUG_PAUSED && !JJ_DEBUG_CONTINUE_REQUESTED
                                         if isfile(marker_path)
@@ -293,7 +293,7 @@ function handle_start_debug(data)
                                         global JJ_LAST_STOP_REASON = "breakpoint"
                                         
                                         # Wait loop - check for continue signal
-                                        marker_path = joinpath(tempdir(), "compute42_debug_continue.marker")
+                                        marker_path = joinpath(tempdir(), "julialab_debug_continue.marker")
                                         wait_start_time = time()
                                         while JJ_DEBUG_PAUSED && !JJ_DEBUG_CONTINUE_REQUESTED
                                             if isfile(marker_path)

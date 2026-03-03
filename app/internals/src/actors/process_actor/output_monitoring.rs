@@ -14,11 +14,11 @@ use super::session::PersistentJuliaSession;
 /// but shouldn't be shown to users
 pub fn should_filter_pipe_ready_message(line: &str) -> bool {
     // Filter out pipe ready messages that are used for internal synchronization
-    line.contains("Compute42: TO_JULIA_PIPE_READY") ||
-    line.contains("Compute42: FROM_JULIA_PIPE_READY") ||
-    line.contains("Compute42: ALL_PIPES_READY") ||
-    line.contains("Compute42: MESSAGE_LOOP_READY") ||
-    line.contains("Compute42: PROJECT_ACTIVATION_COMPLETE")
+    line.contains("JuliaLab: TO_JULIA_PIPE_READY") ||
+    line.contains("JuliaLab: FROM_JULIA_PIPE_READY") ||
+    line.contains("JuliaLab: ALL_PIPES_READY") ||
+    line.contains("JuliaLab: MESSAGE_LOOP_READY") ||
+    line.contains("JuliaLab: PROJECT_ACTIVATION_COMPLETE")
 }
 
 /// Start monitoring Julia's stdout
@@ -110,7 +110,7 @@ pub fn start_stderr_monitoring(
                 // Connect to pipes individually as they become ready
                 // Julia's initialize_permanent_communication blocks on accept(), so we must
                 // connect to to_julia pipe first to unblock it, then from_julia pipe can initialize
-                if line.contains("Compute42: TO_JULIA_PIPE_READY") {
+                if line.contains("JuliaLab: TO_JULIA_PIPE_READY") {
                     // Get to_julia pipe name from session
                     let to_julia_pipe_name = {
                         let session_guard = julia_session.lock().await;
@@ -172,7 +172,7 @@ pub fn start_stderr_monitoring(
                     }
                 }
                 
-                if line.contains("Compute42: FROM_JULIA_PIPE_READY") {
+                if line.contains("JuliaLab: FROM_JULIA_PIPE_READY") {
                     // Get from_julia pipe name from session
                     let from_julia_pipe_name = {
                         let session_guard = julia_session.lock().await;
@@ -236,7 +236,11 @@ pub fn start_stderr_monitoring(
                 
                 // When Julia signals message loop is ready, wait for both pipes to be connected
                 // before signaling that communication is fully ready
-                if line.contains("Compute42: MESSAGE_LOOP_READY") {
+                if line.contains("JuliaLab: TO_JULIA_PIPE_READY") {
+                // Connect to pipes immediately so Julia can accept and start message loop
+                // This unblocks Julia's Sockets.accept() call
+                }
+                if line.contains("JuliaLab: MESSAGE_LOOP_READY") {
                     // Mark that MESSAGE_LOOP_READY was received
                     {
                         let mut flag_guard = message_loop_ready_received.lock().await;
@@ -329,7 +333,7 @@ pub fn start_stderr_monitoring(
                 
                 // When project activation completes, disable output suppression
                 // This signal is emitted after Pkg.activate() and Pkg.instantiate() complete
-                if line.contains("Compute42: PROJECT_ACTIVATION_COMPLETE") {
+                if line.contains("JuliaLab: PROJECT_ACTIVATION_COMPLETE") {
                     let mut suppressed = output_suppressed.lock().await;
                     *suppressed = false;
                     

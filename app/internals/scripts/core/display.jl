@@ -1,4 +1,4 @@
-# Compute42 Display System
+# JuliaLab Display System
 # Plot pane configuration constants (defined directly in Main)
 # Only define if not already defined (avoids redefinition warnings)
 if !@isdefined(JJ_PLOT_PANE_ENABLED)
@@ -23,11 +23,11 @@ if !@isdefined(JJ_DISPLAYABLE_MIMES)
 end
 
 # Plot capture system (similar to VS Code)
-struct Compute42Display <: AbstractDisplay
+struct JuliaLabDisplay <: AbstractDisplay
     is_repl::Bool
 end
 
-Compute42Display() = Compute42Display(false)
+JuliaLabDisplay() = JuliaLabDisplay(false)
 
 # Check if data should be filtered out
 function should_filter_plot_data(data)
@@ -124,15 +124,15 @@ function send_display_msg(kind, data)
             println(plot_socket, message_json)
             flush(plot_socket)
         else
-            println(stderr, "Compute42: Plot socket not available or not open")
+            println(stderr, "JuliaLab: Plot socket not available or not open")
         end
     catch e
-        println(stderr, "Compute42: Failed to send display message: ", sprint(showerror, e))
+        println(stderr, "JuliaLab: Failed to send display message: ", sprint(showerror, e))
     end
 end
 
-# Display method for Compute42Display
-function Base.display(d::Compute42Display, m::MIME, @nospecialize(x))
+# Display method for JuliaLabDisplay
+function Base.display(d::JuliaLabDisplay, m::MIME, @nospecialize(x))
     if !JJ_PLOT_PANE_ENABLED[]
         # Fall back to default display
         return nothing
@@ -160,7 +160,7 @@ function Base.display(d::Compute42Display, m::MIME, @nospecialize(x))
 end
 
 # Display method for general objects (simplified like VS Code)
-function Base.display(d::Compute42Display, @nospecialize(x))
+function Base.display(d::JuliaLabDisplay, @nospecialize(x))
     if JJ_PLOT_PANE_ENABLED[]
         for mime in JJ_DISPLAYABLE_MIMES
             if showable(mime, x)
@@ -181,7 +181,7 @@ function Base.display(d::Compute42Display, @nospecialize(x))
 end
 
 # Check if displayable
-Base.Multimedia.displayable(d::Compute42Display, mime::MIME) = JJ_PLOT_PANE_ENABLED[] && string(mime) in JJ_DISPLAYABLE_MIMES
+Base.Multimedia.displayable(d::JuliaLabDisplay, mime::MIME) = JJ_PLOT_PANE_ENABLED[] && string(mime) in JJ_DISPLAYABLE_MIMES
 
 # Check if a result can be displayed (like VS Code does)
 function can_display_result(x)
@@ -221,14 +221,14 @@ end
 
 # Setup display system (similar to VS Code's fix_displays)
 function setup_display_system(; is_repl = false)
-    # Remove any existing Compute42Display
+    # Remove any existing JuliaLabDisplay
     for d in reverse(Base.Multimedia.displays)
-        if d isa Compute42Display
+        if d isa JuliaLabDisplay
             popdisplay(d)
         end
     end
     # Add our custom display
-    pushdisplay(Compute42Display(is_repl))
+    pushdisplay(JuliaLabDisplay(is_repl))
 end
 
 

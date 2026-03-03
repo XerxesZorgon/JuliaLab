@@ -28,7 +28,7 @@ pub struct LspConfig {
     pub enhanced_hover: bool,
     /// Enable Julia augmentation for types (background)
     pub augment_with_julia: bool,
-    /// Custom Julia depot path (Compute42 uses com.compute42.dev/depot)
+    /// Custom Julia depot path (JuliaLab uses org.julialab.ide/depot)
     pub julia_depot_path: Option<PathBuf>,
 }
 

@@ -37,7 +37,7 @@ pub async fn start_message_sender_task(
                         "[CommunicationActor::IoOperations] Pipe connection broken after {:.2}s since app start while sending message to Julia",
                         elapsed.as_secs_f64()
                     );
-                    let error_msg = "The connection to Julia has been lost. Please restart Compute42 to reconnect.";
+                    let error_msg = "The connection to Julia has been lost. Please restart JuliaLab to reconnect.";
                     if let Err(emit_err) = event_manager.emit_system_error(error_msg).await {
                         error!("[CommunicationActor::IoOperations] Failed to emit system error: {}", emit_err);
                     }

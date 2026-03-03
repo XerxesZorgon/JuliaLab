@@ -231,8 +231,8 @@ pub fn should_filter_variable(name: &str, type_name: &str) -> bool {
         || name.starts_with("c42_")
         || name.starts_with("_")
         || name == "DEBUGGER_AVAILABLE"
-        || name == "Compute42Display"
-        || type_name.contains("Compute42Display");
+        || name == "JuliaLabDisplay"
+        || type_name.contains("JuliaLabDisplay");
     
     is_function || is_module || is_internal_variable
 }
@@ -385,7 +385,7 @@ mod tests {
         assert!(should_filter_variable("C42_INTERNAL", "String"));
         assert!(should_filter_variable("c42_internal_var", "String"));
         assert!(should_filter_variable("DEBUGGER_AVAILABLE", "Bool"));
-        assert!(should_filter_variable("Compute42Display", "Module"));
+        assert!(should_filter_variable("JuliaLabDisplay", "Module"));
         
         // Julia internal variables should be filtered
         assert!(should_filter_variable("_private_var", "Float64"));
@@ -398,7 +398,7 @@ mod tests {
         assert!(should_filter_variable("#1", "Int64")); // Generated function names
         
         // Internal types should be filtered
-        assert!(should_filter_variable("display_obj", "Compute42Display"));
+        assert!(should_filter_variable("display_obj", "JuliaLabDisplay"));
     }
 
     #[test]

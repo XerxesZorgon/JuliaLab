@@ -101,22 +101,22 @@ impl ProcessState {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis();
-        let to_julia_pipe = format!("compute42_to_julia_{}_{}", pid, timestamp);
-        let from_julia_pipe = format!("compute42_from_julia_{}_{}", pid, timestamp);
+        let to_julia_pipe = format!("julialab_to_julia_{}_{}", pid, timestamp);
+        let from_julia_pipe = format!("julialab_from_julia_{}_{}", pid, timestamp);
         (to_julia_pipe, from_julia_pipe)
     }
 
     /// Get the JuliaJunction data directory
-    /// Always uses AppData\Local\com.compute42.dev to avoid write permission errors
+    /// Always uses AppData\Local\org.julialab.ide to avoid write permission errors
     pub fn get_julia_data_directory(&self) -> PathBuf {
         self.get_user_data_directory()
     }
     
     /// Get user data directory for JuliaJunction
-    /// Uses AppData\Local\com.compute42.dev for consistent access
+    /// Uses AppData\Local\org.julialab.ide for consistent access
     pub fn get_user_data_directory(&self) -> PathBuf {
         dirs::data_local_dir()
-            .map(|dir| dir.join("com.compute42.dev"))
+            .map(|dir| dir.join("org.julialab.ide"))
             .unwrap_or_else(|| {
                 log::warn!("Failed to get user data directory, falling back to current directory");
                 PathBuf::from(".")

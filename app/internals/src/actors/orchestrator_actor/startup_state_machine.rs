@@ -147,7 +147,7 @@ impl OrchestratorActor {
             // If transitioning to Completed, emit startup-ready event to close the modal
             if matches!(self.startup_phase, StartupPhase::Completed) {
                 self.state = crate::types::OrchestratorState::Running;
-                let startup_message = "Compute42 initialization complete";
+                let startup_message = "JuliaLab initialization complete";
                 let event_manager = self.event_manager.clone();
                 actix::spawn(async move {
                     if let Err(e) = event_manager.emit_orchestrator_startup_ready(startup_message).await {

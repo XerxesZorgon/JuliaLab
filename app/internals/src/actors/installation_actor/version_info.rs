@@ -86,7 +86,7 @@ pub fn get_julia_version_info(version: &str) -> JuliaVersion {
 /// Get Julia installation directory
 pub fn get_julia_installation_dir() -> std::path::PathBuf {
     let app_data_dir = dirs::data_local_dir().expect("Failed to get app data directory");
-    app_data_dir.join("com.compute42.dev").join("julia")
+    app_data_dir.join("org.julialab.ide").join("julia")
 }
 
 

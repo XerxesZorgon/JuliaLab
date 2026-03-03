@@ -51,7 +51,7 @@ async fn try_start_julia_without_sysimage(
 
     // Set environment variable for Julia data directory
     let data_dir = state.get_julia_data_directory();
-    command.env("COMPUTE42_DATA_DIR", &data_dir);
+    command.env("JULIALAB_DATA_DIR", &data_dir);
     
     // Configure GR backend to prevent GKS QtTerm window from appearing
     // "nul" = null device (no output), prevents interactive window popup
@@ -59,8 +59,8 @@ async fn try_start_julia_without_sysimage(
 
     // Set Julia environment variables to use specific environment
     let app_data_dir = dirs::data_local_dir().expect("Failed to get app data directory");
-    let julia_depot_path = app_data_dir.join("com.compute42.dev").join("depot");
-    let julia_project_path = app_data_dir.join("com.compute42.dev").join("julia-env");
+    let julia_depot_path = app_data_dir.join("org.julialab.ide").join("depot");
+    let julia_project_path = app_data_dir.join("org.julialab.ide").join("julia-env");
     
     // Ensure the Julia environment directory exists
     if !julia_project_path.exists() {
@@ -125,26 +125,49 @@ async fn try_start_julia_without_sysimage(
         );
     }
 
+    // Store the session IMMEDIATELY so output_monitoring can access pipe names
+    // This must happen before execute_julia_setup because that triggers Julia output
+    {
+        let mut session_guard = julia_session.lock().await;
+        *session_guard = Some(session);
+    }
+    
     // Execute the Julia setup code
-    setup::execute_julia_setup(state.as_ref(), &mut session, to_julia_pipe, from_julia_pipe).await?;
-
-// JuliaLab: auto-load Revise.jl per constitution requirement
-    let revise_loaded = if let Err(e) = session.execute_code("using Revise".to_string()).await {
-        log::warn!("Revise.jl not found, attempting auto-install: {}", e);
-        if let Err(install_err) = session.execute_code(
-            r#"import Pkg; Pkg.add("Revise"); using Revise"#.to_string()
-        ).await {
-            log::error!("ProcessActor: Failed to install Revise.jl: {}", install_err);
-            false
+    // Note: We need to get a mutable reference to the session from the Arc<Mutex<>>
+    let setup_result = {
+        let mut session_guard = julia_session.lock().await;
+        if let Some(ref mut session) = *session_guard {
+            setup::execute_julia_setup(state.as_ref(), session, to_julia_pipe, from_julia_pipe).await
         } else {
-            true
+            Err("Session not available".to_string())
         }
-    } else {
-        true
+    };
+    setup_result?;
+
+    // JuliaLab: auto-load Revise.jl per constitution requirement
+    let revise_loaded = {
+        let mut session_guard = julia_session.lock().await;
+        if let Some(ref mut session) = *session_guard {
+            if let Err(e) = session.execute_code("using Revise".to_string()).await {
+                log::warn!("Revise.jl not found, attempting auto-install: {}", e);
+                if let Err(install_err) = session.execute_code(
+                    r#"import Pkg; Pkg.add("Revise"); using Revise"#.to_string()
+                ).await {
+                    log::error!("ProcessActor: Failed to install Revise.jl: {}", install_err);
+                    false
+                } else {
+                    true
+                }
+            } else {
+                true
+            }
+        } else {
+            false
+        }
     };
 
     // Notify frontend of Revise status
-    event_emitter.emit("julia:revise-status", serde_json::json!(revise_loaded)).await;
+    let _ = event_emitter.emit("julia:revise-status", serde_json::json!(revise_loaded)).await;
 
     Ok(())
 }
