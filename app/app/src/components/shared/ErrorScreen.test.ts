@@ -76,7 +76,7 @@ describe('ErrorScreen', () => {
     const button = wrapper.find('.n-button');
 
     expect(button.exists()).toBe(true);
-    expect(button.text()).toContain('Restart Compute42');
+    expect(button.text()).toContain('Restart JuliaLab');
   });
 
   it('should call window.location.reload when restart button is clicked', () => {

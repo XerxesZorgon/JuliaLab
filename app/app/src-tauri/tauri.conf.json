@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Compute42",
+  "productName": "JuliaLab",
   "version": "0.1.0",
-  "identifier": "com.compute42.dev",
+  "identifier": "org.julialab.ide",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Compute42",
+        "title": "JuliaLab",
         "width": 1024,
         "height": 768,
         "visible": true,

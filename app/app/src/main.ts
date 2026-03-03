@@ -14,6 +14,9 @@ import { startLspStatusBridge } from './services/lspEventsBridge';
 import { startOrchestratorEventsBridge } from './services/orchestratorEventsBridge';
 // FontAwesome removed - now using Ionicons
 
+// JuliaLab theme CSS variables
+import './styles/theme.css';
+
 // General Fonts
 import 'vfonts/Lato.css';
 // Monospace Fonts

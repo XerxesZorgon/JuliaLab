@@ -44,11 +44,11 @@ const checkingUpdates = ref(false);
 const helpSections = computed(() => helpService.getHelpSections());
 
 const openWebsite = async () => {
-  await openUrl('https://www.compute42.com');
+  await openUrl('https://www.julialab.com');
 };
 
 const copySystemInfo = async () => {
-  const systemInfo = `Compute42 v${appVersion.value}
+  const systemInfo = `JuliaLab v${appVersion.value}
 Build Date: ${buildDate.value}
 Julia Version: ${juliaVersion.value}
 Platform: ${platform.value}

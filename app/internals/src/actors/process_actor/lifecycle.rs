@@ -128,11 +128,23 @@ async fn try_start_julia_without_sysimage(
     // Execute the Julia setup code
     setup::execute_julia_setup(state.as_ref(), &mut session, to_julia_pipe, from_julia_pipe).await?;
 
-    // Store the session AFTER starting monitoring and executing setup code
-    {
-        let mut session_guard = julia_session.lock().await;
-        *session_guard = Some(session);
-    }
+// JuliaLab: auto-load Revise.jl per constitution requirement
+    let revise_loaded = if let Err(e) = session.execute_code("using Revise".to_string()).await {
+        log::warn!("Revise.jl not found, attempting auto-install: {}", e);
+        if let Err(install_err) = session.execute_code(
+            r#"import Pkg; Pkg.add("Revise"); using Revise"#.to_string()
+        ).await {
+            log::error!("ProcessActor: Failed to install Revise.jl: {}", install_err);
+            false
+        } else {
+            true
+        }
+    } else {
+        true
+    };
+
+    // Notify frontend of Revise status
+    event_emitter.emit("julia:revise-status", serde_json::json!(revise_loaded)).await;
 
     Ok(())
 }

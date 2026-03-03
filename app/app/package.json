@@ -1,7 +1,8 @@
 {
-  "name": "app",
+  "name": "julialab",
   "private": true,
   "version": "0.1.0",
+  "description": "A MATLAB-inspired desktop IDE for the Julia programming language",
   "type": "module",
   "scripts": {
     "dev": "vite",

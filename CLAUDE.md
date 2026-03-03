@@ -23,9 +23,7 @@ scientists and engineers migrating from MATLAB to Julia who want a familiar inte
 - Prerequisites: Rust (stable), Node.js 18+, Julia installed and on PATH
 
 ## Current Phase
-[Update this as you progress through phases]
-Phase 1: Familiarization complete
-Phase 2: MATLAB-style 4-panel layout — IN PROGRESS
+Phase 1 complete — ready for Phase 2
 
 ## Design Principles
 - Layout must feel immediately familiar to MATLAB users
@@ -35,11 +33,75 @@ Phase 2: MATLAB-style 4-panel layout — IN PROGRESS
 - Julia-green accent color: #389826
 - Do NOT change the Tauri/Vue/Rust stack without discussion
 
-## Key Files
-- app/src/App.vue — main layout
-- app/src/components/ — UI components
-- app/src-tauri/src/ — Rust/Tauri backend commands
-- internals/src/ — actor system and Julia process management
+## Color Variables (never hardcode hex)
+- --jl-accent-green: #389826  (Julia green — primary accent)
+- --jl-accent-red:   #cb3c33  (Julia red — errors, stop button)
+- --jl-accent-purple:#9558b2  (Julia purple — secondary accent)
+- --jl-bg:           #1a1a1a  (main background)
+- --jl-panel-bg:     #1e1e1e  (panel background)
+- --jl-border:       #222222  (panel borders)
+- --jl-font-mono:    'IBM Plex Mono', monospace
+- --jl-font-ui:      'IBM Plex Sans', sans-serif
+
+## Fonts
+IBM Plex Mono (code), IBM Plex Sans (UI). Import from Google Fonts.
+DO NOT use Inter, Roboto, system-ui as the primary fonts.
+
+## Key Files (from codebase audit)
+### Frontend (Vue 3)
+- Main layout component: app/app/src/components/layouts/MainLayout.vue
+- Root component: app/app/src/App.vue
+- Editor view: app/app/src/components/HomeView/EditorView.vue
+- Terminal view: app/app/src/components/HomeView/TerminalView.vue
+- Variables panel: app/app/src/components/HomeView/VariablesPanel.vue
+- Monaco editor: app/app/src/components/HomeView/MonacoEditorInstance.vue
+- File explorer: app/app/src/components/shared/FileExplorer.vue
+- Router: app/app/src/router/index.ts
+- Main entry: app/app/src/main.ts
+
+### Pinia Stores
+- Workspace store: app/app/src/store/appStore.ts
+- Terminal store: app/app/src/store/terminalStore.ts
+- Plot store: app/app/src/store/plotStore.ts
+- Settings store: app/app/src/store/settingsStore.ts
+
+### Backend (Rust/Actix)
+- Julia process actor: app/internals/src/actors/process_actor/mod.rs
+- Julia lifecycle (spawning): app/internals/src/actors/process_actor/lifecycle.rs
+- LSP actor: app/internals/src/actors/lsp_actor/mod.rs
+- Plot actor: app/internals/src/actors/plot_actor/mod.rs
+- Tauri commands (generic): app/app/src-tauri/src/commands/generic.rs
+- Tauri commands (LSP): app/app/src-tauri/src/commands/lsp.rs
+- Tauri commands (files): app/app/src-tauri/src/commands/files.rs
+- Main Tauri entry: app/app/src-tauri/src/lib.rs
+
+### Configuration
+- Tauri config: app/app/src-tauri/tauri.conf.json
+- Package.json: app/app/package.json
+- Cargo manifest: app/app/src-tauri/Cargo.toml
+- Theme CSS: app/app/src/styles/theme.css (create if missing)
+
+## Spec Kit Files
+- Constitution: spec/constitution.md
+- Codebase audit: spec/codebase-audit.md
+- Preflight checklist: spec/julialab-preflight.md
+
+## Architecture Rules (Non-Negotiable)
+- Tauri 2 (Rust backend, Actix actors). DO NOT suggest Electron.
+- Vue 3 Composition API (<script setup>). DO NOT use Options API.
+- Monaco Editor. DO NOT suggest CodeMirror.
+- Pinia for state. DO NOT use Vuex.
+- Naive UI base components. May add AG Grid for workspace table.
+- Julia is ALWAYS a subprocess. Never bundled. Never FFI.
+- Revise.jl ALWAYS loads at Julia session start. Never disable.
+
+## Development Rules
+1. One task at a time. Complete + test + confirm before moving on.
+2. All colors via CSS variables. No hardcoded hex in Vue/TS files.
+3. Conventional Commits: feat:, fix:, refactor:, docs:, test:
+4. All new Tauri commands need Rust unit tests.
+5. All new Pinia stores need Vitest unit tests.
+6. Before implementing anything ambiguous, ask — don't guess.
 ```
 
 ---
@@ -90,3 +152,7 @@ Add MATLAB-style cell mode to the Monaco Editor:
 2. Highlight the current cell with a subtle background color in Monaco
 3. Add "Run Cell" and "Run Cell and Advance" to the toolbar
 4. Wire these to execute only the current cell's code in the Julia REPL
+
+In `lifecycle.rs`, notice this line near the top of the function:
+command.env("COMPUTE42_DATA_DIR", &data_dir);
+And the Julia depot path still uses com.compute42.dev. These will need updating to org.julialab.ide in a follow-up — but don't do it now, it could break the Julia environment path and is a separate rebrand task. 

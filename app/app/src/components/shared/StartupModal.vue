@@ -4,13 +4,17 @@
       <!-- Header with Logo -->
       <div class="header-content">
         <div class="logo-container">
-          <img src="/icon.png" alt="Compute42" class="logo" />
+          <span style="display:inline-flex;gap:6px;margin-bottom:12px">
+            <span style="width:14px;height:14px;border-radius:50%;background:#cb3c33;display:inline-block"></span>
+            <span style="width:14px;height:14px;border-radius:50%;background:#9558b2;display:inline-block"></span>
+            <span style="width:14px;height:14px;border-radius:50%;background:#389826;display:inline-block"></span>
+          </span>
         </div>
-        <h1 class="app-title">Compute42</h1>
+        <h1 class="app-title">JuliaLab</h1>
         <p class="app-subtitle">Julia Development Environment</p>
         <p class="version-info">v{{ appVersion }}</p>
         <div class="beta-warning">
-          <p>⚠️ Beta Software - Use at your own risk</p>
+          <p>⚠️ Early Preview — Phase 1</p>
         </div>
         <div v-if="isInitialStartup" class="initial-startup-info">
           <p>
@@ -90,7 +94,7 @@ const emit = defineEmits<{
 }>();
 
 // Startup state
-const mainStatusMessage = ref('Initializing Compute42...');
+const mainStatusMessage = ref('Initializing JuliaLab...');
 const isError = ref(false);
 const isComplete = ref(false);
 const errorMessage = ref('');
@@ -107,7 +111,7 @@ const updateProgress = (newPercentage: number) => {
 };
 
 // App version
-const appVersion = ref('0.0.0');
+const appVersion = ref('0.1.0');
 
 // Track if this is the initial startup (Julia not installed)
 const isInitialStartup = ref(false);
@@ -141,7 +145,7 @@ const statusClass = computed(() => {
 const retrySetup = () => {
   // Reset state and restart setup
   errorMessage.value = '';
-    mainStatusMessage.value = 'Initializing Compute42...';
+  mainStatusMessage.value = 'Initializing JuliaLab...';
   progressPercentage.value = 0;
   progressText.value = 'Initializing...';
   isComplete.value = false;
@@ -191,12 +195,12 @@ const checkAndCompleteStartup = () => {
     );
 
     isComplete.value = true;
-    mainStatusMessage.value = 'Compute42 is ready!';
-    progressText.value = 'Compute42 is ready!';
+    mainStatusMessage.value = 'JuliaLab is ready!';
+    progressText.value = 'JuliaLab is ready!';
     progressPercentage.value = 100;
 
     // Log what the user sees
-    debug(`StartupModal: DISPLAYING MESSAGE: "Compute42 is ready!" (100%)`);
+    debug(`StartupModal: DISPLAYING MESSAGE: "JuliaLab is ready!" (100%)`);
 
     // Complete startup
     debug('StartupModal: Emitting startupComplete event - modal will close');

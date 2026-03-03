@@ -11,8 +11,8 @@
       <!-- About page specific content -->
       <div v-if="sectionId === 'about'" class="about-content">
         <div class="about-header">
-          <img src="/icon.png" alt="Compute42" class="about-logo" />
-          <h1>About Compute42</h1>
+          <img src="/icon.png" alt="JuliaLab" class="about-logo" />
+          <h1>About JuliaLab</h1>
         </div>
 
         <div class="info-section">
@@ -40,9 +40,9 @@
                 <td class="info-value">
                   <a
                     href="#"
-                    @click.prevent="handleLinkClick('https://www.compute42.com')"
+                    @click.prevent="handleLinkClick('https://www.julialab.com')"
                     class="contact-link"
-                    >www.compute42.com</a
+                    >www.julialab.com</a
                   >
                 </td>
               </tr>
@@ -51,9 +51,9 @@
                 <td class="info-value">
                   <a
                     href="#"
-                    @click.prevent="handleLinkClick('https://github.com/elan8/compute42')"
+                    @click.prevent="handleLinkClick('https://github.com/elan8/julialab')"
                     class="contact-link"
-                    >github.com/elan8/compute42</a
+                    >github.com/elan8/julialab</a
                   >
                 </td>
               </tr>
@@ -116,8 +116,8 @@ const renderedMarkdown = computed(() => {
   // Handle special links for the about page
   if (props.sectionId === 'about') {
     markdownText = markdownText.replace(
-      /\[www\.compute42\.com\]\(https:\/\/www\.compute42\.com\)/g,
-      '<a href="#" onclick="window.open(\'https://www.compute42.com\', \'_blank\')">www.compute42.com</a>'
+      /\[www\.julialab\.com\]\(https:\/\/www\.julialab\.com\)/g,
+      '<a href="#" onclick="window.open(\'https://www.julialab.com\', \'_blank\')">www.julialab.com</a>'
     );
   }
 

@@ -4,9 +4,9 @@
       <!-- Header with Logo -->
       <div class="header-content">
         <div class="logo-container">
-          <img src="/icon.png" alt="Compute42" class="logo" />
+          <img src="/icon.png" alt="JuliaLab" class="logo" />
         </div>
-        <h1 class="app-title">Compute42</h1>
+        <h1 class="app-title">JuliaLab</h1>
       </div>
 
       <!-- Error Icon and Message -->
@@ -18,13 +18,13 @@
         </div>
         <h2 class="error-title">Error</h2>
         <p class="error-message">{{ errorMessage || 'An error has occurred.' }}</p>
-        <p class="error-instruction">Please restart Compute42 to continue.</p>
+        <p class="error-instruction">Please restart JuliaLab to continue.</p>
       </div>
 
       <!-- Action Button -->
       <div class="error-actions">
         <n-button type="primary" size="large" @click="restartApplication">
-          Restart Compute42
+          Restart JuliaLab
         </n-button>
       </div>
     </div>

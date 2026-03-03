@@ -1,0 +1,15 @@
+:root {
+  --jl-accent-green:  #389826;
+  --jl-accent-red:    #cb3c33;
+  --jl-accent-purple: #9558b2;
+  --jl-bg:            #1a1a1a;
+  --jl-panel-bg:      #1e1e1e;
+  --jl-panel-bg-alt:  #252525;
+  --jl-border:        #222222;
+  --jl-border-light:  #2a2a2a;
+  --jl-text-primary:  #e0e0e0;
+  --jl-text-secondary:#aaaaaa;
+  --jl-text-muted:    #555555;
+  --jl-font-mono:     'IBM Plex Mono', 'Cascadia Code', 'Consolas', monospace;
+  --jl-font-ui:       'IBM Plex Sans', 'Segoe UI', sans-serif;
+}

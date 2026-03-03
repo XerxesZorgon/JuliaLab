@@ -135,8 +135,8 @@ const refreshInfo = async () => {
 const getPathLabel = (key) => {
   const labels = {
     julia_installation: 'Julia Installation',
-    juliajunction_depot: 'Compute42 Depot',
-    juliajunction_env: 'Compute42 Environment',
+    juliajunction_depot: 'JuliaLab Depot',
+    juliajunction_env: 'JuliaLab Environment',
     default_depot: 'Default Julia Depot',
     lsp_env: 'LSP Environment',
   };
@@ -145,7 +145,7 @@ const getPathLabel = (key) => {
 
 const getSizeLabel = (key) => {
   const labels = {
-    juliajunction_depot: 'Compute42 Depot',
+    juliajunction_depot: 'JuliaLab Depot',
     default_depot: 'Default Julia Depot',
   };
   return labels[key] || key;

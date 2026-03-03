@@ -26,7 +26,7 @@ export class ApplicationService {
   private initializationCompleteUnlistenFn: UnlistenFn | null = null;
   private projectChangeStatusUnlistenFn: UnlistenFn | null = null;
   private projectChangeCompleteUnlistenFn: UnlistenFn | null = null;
-  private compute42ReadyUnlistenFn: UnlistenFn | null = null;
+  private juliaLabReadyUnlistenFn: UnlistenFn | null = null;
 
   constructor() {
     this.setupEventListeners();
@@ -77,8 +77,8 @@ export class ApplicationService {
         }
       );
 
-      this.compute42ReadyUnlistenFn = await listen('orchestrator:startup-ready', () => {
-        this.handleCompute42Ready();
+      this.juliaLabReadyUnlistenFn = await listen('orchestrator:startup-ready', () => {
+        this.handleJuliaLabReady();
       });
 
       await trace('ApplicationService: Event listeners set up successfully');
@@ -157,11 +157,11 @@ export class ApplicationService {
     );
   }
 
-  private handleCompute42Ready() {
-    //console.log('ApplicationService: Compute42 is ready');
+  private handleJuliaLabReady() {
+    //console.log('ApplicationService: JuliaLab is ready');
 
     // Emit custom event for UI components to listen to
-    window.dispatchEvent(new CustomEvent('compute42-ready'));
+    window.dispatchEvent(new CustomEvent('julialab-ready'));
   }
 
   /**
@@ -189,9 +189,9 @@ export class ApplicationService {
         this.projectChangeCompleteUnlistenFn();
         this.projectChangeCompleteUnlistenFn = null;
       }
-      if (this.compute42ReadyUnlistenFn) {
-        this.compute42ReadyUnlistenFn();
-        this.compute42ReadyUnlistenFn = null;
+      if (this.juliaLabReadyUnlistenFn) {
+        this.juliaLabReadyUnlistenFn();
+        this.juliaLabReadyUnlistenFn = null;
       }
       await trace('ApplicationService: Event listeners cleaned up successfully');
     } catch (error) {

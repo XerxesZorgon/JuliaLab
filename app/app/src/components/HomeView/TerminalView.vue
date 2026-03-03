@@ -46,7 +46,7 @@ export default {
       unlistenError: null,
       unlistenStatus: null,
       unlistenCalculationComplete: null,
-      unlistenCompute42Ready: null,
+      unlistenJulialabReady: null,
       unlistenRestartStarted: null,
       unlistenRestartCompleted: null,
       // Note: Execution and backend busy listeners are now handled centrally in App.vue
@@ -476,9 +476,9 @@ export default {
         this.unlistenCalculationComplete();
         this.unlistenCalculationComplete = null;
       }
-      if (this.unlistenCompute42Ready) {
-        this.unlistenCompute42Ready();
-        this.unlistenCompute42Ready = null;
+      if (this.unlistenJulialabReady) {
+        this.unlistenJulialabReady();
+        this.unlistenJulialabReady = null;
       }
       // Note: Execution and backend busy listeners are now handled centrally in App.vue
 
@@ -517,7 +517,7 @@ export default {
     async setupReadyListener() {
       let promptWritten = false; // Flag to prevent multiple prompts
 
-      this.unlistenCompute42Ready = await listen('orchestrator:startup-ready', () => {
+      this.unlistenJulialabReady = await listen('orchestrator:startup-ready', () => {
         debug('TerminalView: Orchestrator startup is ready. Enabling input.');
         console.log(
           'TerminalView: Startup ready event received, promptWritten:',

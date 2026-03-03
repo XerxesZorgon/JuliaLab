@@ -4,7 +4,7 @@
       <!-- Header with Logo -->
       <div class="header-content">
         <div class="logo-container">
-          <img src="/icon.png" alt="Compute42 Logo" class="logo" />
+          <img src="/icon.png" alt="JuliaLab Logo" class="logo" />
         </div>
         <h1 class="app-title">Switching Project</h1>
         <p class="app-subtitle">Julia Development Environment</p>

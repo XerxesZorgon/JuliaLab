@@ -44,8 +44,8 @@ Hello, Julia!
        end
 greet (generic function with 1 method)
 
-\x1b[1;32mjulia> \x1b[0mgreet("Compute42")
-Hello, Compute42!
+\x1b[1;32mjulia> \x1b[0mgreet("JuliaLab")
+Hello, JuliaLab!
 
 \x1b[1;32mjulia> \x1b[0m`;
 

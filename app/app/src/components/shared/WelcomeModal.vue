@@ -4,8 +4,8 @@
       <!-- Header with Logo -->
       <div class="header-content">
         <div class="header-row">
-          <img src="/icon.png" alt="Compute42" class="logo" />
-          <h1 class="app-title">Compute42</h1>
+          <img src="/icon.png" alt="JuliaLab" class="logo" />
+          <h1 class="app-title">JuliaLab</h1>
         </div>
       </div>
 
@@ -28,8 +28,8 @@
             <p class="step-subtitle">
               {{
                 currentMode === 'login'
-                  ? 'Sign in to continue to Compute42'
-                  : 'Join Compute42 to get started'
+                  ? 'Sign in to continue to JuliaLab'
+                  : 'Join JuliaLab to get started'
               }}
             </p>
           </div>
