@@ -7,49 +7,14 @@
     
     <!-- Main content area -->
     <div class="main-content">
-      <!-- TopBar: breadcrumb + action buttons -->
-      <div class="topbar">
-      <div class="topbar-left">
-        <span class="topbar-breadcrumb">{{ breadcrumb }}</span>
-      </div>
-      <div class="topbar-right">
-        <NTooltip trigger="hover" placement="bottom">
-          <template #trigger>
-            <NButton
-              size="tiny"
-              quaternary
-              class="topbar-btn topbar-btn--run"
-              @click="handleRunFile"
-              :disabled="!appStore.projectPath"
-            >
-              <template #icon><NIcon size="14"><PlayOutline /></NIcon></template>
-              Run
-            </NButton>
-          </template>
-          Run current file (F5)
-        </NTooltip>
-        <NTooltip trigger="hover" placement="bottom">
-          <template #trigger>
-            <NButton
-              size="tiny"
-              quaternary
-              class="topbar-btn"
-              @click="handleSaveFile"
-            >
-              <template #icon><NIcon size="14"><SaveOutline /></NIcon></template>
-              Save
-            </NButton>
-          </template>
-          Save current file (Ctrl+S)
-        </NTooltip>
-      </div>
-    </div>
+    <!-- Ribbon Bar -->
+    <RibbonBar />
 
     <!-- Main 4-panel area -->
     <div class="panels-area" v-if="route.name === 'Home'">
       <Splitpanes class="jl-theme" :horizontal="false" @resized="onOuterResized">
         <!-- LEFT PANE: File Explorer -->
-        <Pane :size="leftPaneSize" :min-size="leftMinPct" :max-size="leftMaxPct">
+        <Pane v-show="layoutStore.showFilesPanel" :size="leftPaneSize" :min-size="leftMinPct" :max-size="leftMaxPct">
           <div class="panel panel--left">
             <div class="panel-header">Files</div>
             <div class="panel-body">
@@ -72,7 +37,7 @@
               </div>
             </Pane>
             <!-- CENTER-BOTTOM: Terminal/REPL -->
-            <Pane :size="terminalPaneSize" :min-size="termBottomMinPct" :max-size="termBottomMaxPct">
+            <Pane v-show="layoutStore.showTerminalPanel" :size="terminalPaneSize" :min-size="termBottomMinPct" :max-size="termBottomMaxPct">
               <div class="panel panel--terminal">
                 <TerminalMenuBar />
                 <div class="terminal-body">
@@ -84,7 +49,7 @@
         </Pane>
 
         <!-- RIGHT PANE: Workspace Variables -->
-        <Pane :size="rightPaneSize" :min-size="rightMinPct" :max-size="rightMaxPct">
+        <Pane v-show="layoutStore.showWorkspacePanel" :size="rightPaneSize" :min-size="rightMinPct" :max-size="rightMaxPct">
           <div class="panel panel--right">
             <div class="panel-header">Workspace</div>
             <div class="panel-body">
@@ -155,7 +120,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { useMessage, NIcon, NSpace, NCard, NButton, NTooltip } from 'naive-ui';
+import { useMessage, NIcon, NSpace, NCard, NButton } from 'naive-ui';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';
 import { invoke } from '@tauri-apps/api/core';
@@ -166,8 +131,6 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import {
   FolderOpenOutline,
   AddOutline,
-  PlayOutline,
-  SaveOutline,
 } from '@vicons/ionicons5';
 
 import NavigationRail from './NavigationRail.vue';
@@ -177,7 +140,9 @@ import EditorView from '../HomeView/EditorView.vue';
 import BottomPanel from '../HomeView/BottomPanel.vue';
 import TerminalMenuBar from '../HomeView/TerminalMenuBar.vue';
 import VariablesPanel from '../HomeView/VariablesPanel.vue';
+import RibbonBar from './RibbonBar.vue';
 import { useAppStore } from '../../store/appStore';
+import { useLayoutStore } from '../../store/layoutStore';
 import { storeToRefs } from 'pinia';
 import { useTerminalStore } from '../../store/terminalStore';
 
@@ -185,6 +150,7 @@ const router = useRouter();
 const route = useRoute();
 const message = useMessage();
 const appStore = useAppStore();
+const layoutStore = useLayoutStore();
 const terminalStore = useTerminalStore();
 const { activeTerminalId } = storeToRefs(terminalStore);
 const { status: projectChangeStatus } = useProjectChangeStatus();
@@ -205,17 +171,6 @@ const rightMaxPct = 40; // ~500px
 const termBottomMinPct = 12; // ~120px of center height
 const termBottomMaxPct = 65; // ~500px of center height
 
-// Breadcrumb from project path
-const breadcrumb = computed(() => {
-  const p = appStore.projectPath;
-  if (!p) return 'No project open';
-  // Show last 2 segments
-  const parts = p.replace(/\\/g, '/').split('/').filter(Boolean);
-  return parts.length > 2
-    ? '…/' + parts.slice(-2).join('/')
-    : parts.join('/');
-});
-
 // Splitpane resize handlers — keep sizes in sync
 const onOuterResized = (panes) => {
   if (panes.length === 3) {
@@ -230,26 +185,6 @@ const onCenterResized = (panes) => {
     editorPaneSize.value = panes[0].size;
     terminalPaneSize.value = panes[1].size;
   }
-};
-
-// --- TopBar actions ---
-const handleRunFile = async () => {
-  try {
-    const filePath = appStore.activeFilePath;
-    if (!filePath) {
-      message.warning('No file is currently open');
-      return;
-    }
-    await invoke('execute_julia_file', { filePath, fileContent: '' });
-  } catch (err) {
-    error('MainLayout: Failed to run file:', err);
-    message.error('Failed to run file');
-  }
-};
-
-const handleSaveFile = () => {
-  // Dispatch a save event that EditorView listens to
-  window.dispatchEvent(new CustomEvent('save-current-file'));
 };
 
 // --- Project/file management (preserved from original) ---
@@ -443,47 +378,6 @@ defineExpose({
   min-width: 0;
   height: 100vh;
   overflow: hidden;
-}
-
-/* === TopBar === */
-.topbar {
-  height: 28px;
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
-  background-color: var(--jl-panel-bg);
-  border-bottom: 1px solid var(--jl-border);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.topbar-breadcrumb {
-  color: var(--jl-text-secondary);
-  font-family: var(--jl-font-mono);
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.topbar-btn {
-  font-size: 11px;
-  font-family: var(--jl-font-ui);
-}
-.topbar-btn--run {
-  color: var(--jl-accent-green);
 }
 
 /* === Panels area === */

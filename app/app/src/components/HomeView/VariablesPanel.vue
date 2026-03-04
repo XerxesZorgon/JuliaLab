@@ -1,8 +1,19 @@
 <template>
   <div class="variables-panel">
+    <!-- Toolbar -->
+    <div class="workspace-toolbar">
+      <span class="workspace-count">
+        {{ tableData.length }} variable{{ tableData.length !== 1 ? 's' : '' }}
+      </span>
+      <button class="workspace-refresh" @click="refreshVariables" title="Refresh variables">
+        &#x21bb;
+      </button>
+    </div>
+
+    <!-- DataTable or empty state -->
     <div class="panel-content">
-      <div v-if="Object.keys(debugVariables).length === 0" class="no-variables">
-        <n-icon size="32" color="#888"><InformationCircleOutline /></n-icon>
+      <div v-if="tableData.length === 0" class="no-variables">
+        <n-icon size="32" color="var(--jl-text-muted)"><InformationCircleOutline /></n-icon>
         <p v-if="isDebugging">No variables available</p>
         <p v-else>No workspace variables</p>
         <p class="hint" v-if="isDebugging">
@@ -13,28 +24,22 @@
         </p>
       </div>
 
-      <div v-else class="variables-list">
-        <div
-          v-for="(variable, name) in debugVariables"
-          :key="name"
-          class="variable-item"
-          :class="{ expandable: variable.is_expandable }"
-          @click="variable.is_expandable ? showVariableModal(name, variable) : null"
-        >
-          <div class="variable-header">
-            <span class="variable-name">{{ name }}</span>
-            <span class="variable-type">{{ variable.type || 'Unknown' }}</span>
-          </div>
-          <div class="variable-value">
-            {{ getVariableDisplayValue(variable) }}
-            <span v-if="variable.is_expandable" class="expand-icon">🔍</span>
-          </div>
-        </div>
-      </div>
+      <n-data-table
+        v-else
+        :columns="columns"
+        :data="tableData"
+        :row-props="rowProps"
+        :row-class-name="rowClassName"
+        size="small"
+        :single-line="false"
+        :bordered="false"
+        flex-height
+        class="workspace-table"
+      />
     </div>
   </div>
 
-  <!-- Variable Details Modal -->
+  <!-- Variable Details Modal (preserved from original) -->
   <n-modal
     v-model:show="showModal"
     preset="card"
@@ -51,7 +56,6 @@
           <strong>Size:</strong>
           <span>{{ selectedVariable.dimensions }}</span>
         </div>
-        <!-- DataFrame-specific metadata -->
         <div
           v-if="selectedVariable.is_dataframe && selectedVariable.parsed_data"
           class="metadata-item"
@@ -75,8 +79,6 @@
         </div>
       </div>
 
-      <!-- Value section with more space -->
-
       <!-- Loading indicator -->
       <div v-if="selectedVariable.loading" class="loading-indicator">
         <n-spin size="small" />
@@ -85,7 +87,7 @@
 
       <template v-else>
         <div v-if="isTruncated(selectedVariable.value)" class="truncation-warning">
-          ⚠️ Large variable - showing first 10,000 characters. Full pagination support coming soon!
+          Large variable - showing first 10,000 characters. Full pagination support coming soon!
         </div>
 
         <!-- Display table for arrays/matrices -->
@@ -128,17 +130,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import { NIcon, NModal, NSpin } from 'naive-ui';
+import { ref, h, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
+import { NIcon, NModal, NSpin, NDataTable } from 'naive-ui';
+import type { DataTableColumns } from 'naive-ui';
 import { InformationCircleOutline } from '@vicons/ionicons5';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { debug as debugLog, error, info, warn } from '../../utils/logger';
+import { error, warn } from '../../utils/logger';
 import { useAppStore } from '../../store/appStore';
 
 // Props
 const props = defineProps<{
-  isDebugging: boolean;
+  isDebugging?: boolean;
 }>();
 
 // Access the app store for persisted workspace variables
@@ -150,93 +153,130 @@ const showModal = ref(false);
 const selectedVariable = ref<any>(null);
 
 // Computed property that always returns the correct variables source
-// In debug mode: use debugVariablesLocal (from debug events)
-// In normal mode: use appStore.workspaceVariables (persisted, won't be cleared by spurious events)
 const debugVariables = computed(() => {
-  const result = props.isDebugging ? debugVariablesLocal.value : appStore.workspaceVariables;
-  const count = Object.keys(result).length;
-  // Only log if count changes significantly to avoid spam
-  // (computed properties can be called many times)
-  return result;
+  return props.isDebugging ? debugVariablesLocal.value : appStore.workspaceVariables;
 });
 
-// Helper function to format variable values
-const getVariableDisplayValue = (variable: any): string => {
-  // If we have a summary (from events or full data), use it
-  if (variable.summary) {
-    return variable.summary;
-  }
+// ─── DataTable columns ──────────────────────────────────────────────────────
+const columns: DataTableColumns = [
+  {
+    title: 'Name',
+    key: 'name',
+    width: 130,
+    ellipsis: { tooltip: true },
+    render(row: any) {
+      return h('span', { class: 'cell-name' }, row.name);
+    },
+  },
+  {
+    title: 'Type',
+    key: 'type',
+    width: 110,
+    ellipsis: { tooltip: true },
+    render(row: any) {
+      return h('span', { class: 'cell-type' }, row.type);
+    },
+  },
+  {
+    title: 'Size',
+    key: 'size',
+    width: 80,
+    render(row: any) {
+      return h('span', { class: 'cell-size' }, row.size);
+    },
+  },
+  {
+    title: 'Value',
+    key: 'value',
+    ellipsis: { tooltip: true },
+    render(row: any) {
+      return h('span', { class: 'cell-value' }, row.value);
+    },
+  },
+];
 
-  // Handle lightweight event data (has is_array directly)
+// ─── Computed table data ────────────────────────────────────────────────────
+const tableData = computed(() => {
+  return Object.entries(debugVariables.value).map(([name, variable]) => ({
+    name,
+    type: variable.type || 'Unknown',
+    size: getVariableSize(variable),
+    value: getVariableDisplayValue(variable),
+    _raw: variable,
+  }));
+});
+
+// Row props — click handler for expandable variables
+const rowProps = (row: any) => {
+  return {
+    style: row._raw.is_expandable ? 'cursor: pointer;' : '',
+    onClick: () => {
+      if (row._raw.is_expandable) {
+        showVariableModal(row.name, row._raw);
+      }
+    },
+  };
+};
+
+// Row class — highlight expandable rows
+const rowClassName = (row: any) => {
+  return row._raw.is_expandable ? 'expandable-row' : '';
+};
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+const getVariableSize = (variable: any): string => {
+  if (variable.dimensions) return variable.dimensions;
+  if (variable.element_count != null) return String(variable.element_count);
+  return '\u2014'; // em-dash
+};
+
+const getVariableDisplayValue = (variable: any): string => {
+  if (variable.summary) return variable.summary;
+
   if (variable.is_array) {
     const count = variable.element_count || 0;
     return `[${count} elements]`;
   }
-
-  if (variable.is_dict) {
-    return '{...}';
-  }
-
+  if (variable.is_dict) return '{...}';
   if (variable.is_struct) {
     const typeName = variable.type || 'Unknown';
     return `${typeName}{...}`;
   }
 
-  // Handle full variable data (has var_type object)
   if (variable.var_type?.is_array) {
     const count = variable.var_type.element_count || 0;
     return `[${count} elements]`;
   }
-
-  if (variable.var_type?.is_dict) {
-    return '{...}';
-  }
-
-  if (variable.var_type?.is_struct) {
-    return `${variable.var_type.name}{...}`;
-  }
+  if (variable.var_type?.is_dict) return '{...}';
+  if (variable.var_type?.is_struct) return `${variable.var_type.name}{...}`;
 
   return variable.value || '[Empty]';
 };
 
-// Show variable details in modal
+// ─── Modal logic (preserved from original) ──────────────────────────────────
 const showVariableModal = async (name: string, variable: any) => {
-  // Store current variables count before opening modal (for debugging)
   const variablesCountBefore = Object.keys(debugVariables.value).length;
-  const storeCountBefore = Object.keys(appStore.workspaceVariables).length;
-  const localCountBefore = Object.keys(debugVariablesLocal.value).length;
 
-  // Special debugging for DataFrames
-  // Also check type field as fallback if is_dataframe flag is not set
   const isActuallyDataFrame =
     variable.is_dataframe || (variable.type && variable.type.includes('DataFrame'));
-  if (isActuallyDataFrame) {
-    // Ensure is_dataframe flag is set
-    if (!variable.is_dataframe) {
-      variable.is_dataframe = true;
-    }
+  if (isActuallyDataFrame && !variable.is_dataframe) {
+    variable.is_dataframe = true;
   }
 
-  // Set initial data
   selectedVariable.value = { name, ...variable };
   showModal.value = true;
 
-  // Check immediately after setting modal
   await nextTick();
   const variablesCountAfterModal = Object.keys(debugVariables.value).length;
   const storeCountAfterModal = Object.keys(appStore.workspaceVariables).length;
 
   if (variablesCountBefore > 0 && variablesCountAfterModal === 0) {
-    await error('⚠️ VARIABLES WERE CLEARED AFTER MODAL OPEN!');
+    await error('VARIABLES WERE CLEARED AFTER MODAL OPEN!');
     await error(
       `Before: ${variablesCountBefore}, After: ${variablesCountAfterModal}, Store still has: ${storeCountAfterModal}`
     );
   }
 
-  // Note: In normal mode, debugVariables is computed from appStore.workspaceVariables,
-  // so it will automatically reflect the store. No need to manually restore.
-
-  // If variable needs fetch (large variable), or if it's a DataFrame without parsed_data, fetch the full value
   const needsFetch = variable.needs_fetch && !variable.value;
   const isDataFrameNeedingFetch = variable.is_dataframe && !variable.parsed_data && !variable.value;
 
@@ -245,42 +285,35 @@ const showVariableModal = async (name: string, variable: any) => {
 
     try {
       const variablesCountBeforeInvoke = Object.keys(debugVariables.value).length;
-      const storeCountBeforeInvoke = Object.keys(appStore.workspaceVariables).length;
 
-      const fullValue = await invoke('get_variable_value', { variableName: name });
+      const fullValue = await invoke<string | null>('get_variable_value', { variableName: name });
 
       const variablesCountAfterInvoke = Object.keys(debugVariables.value).length;
-      const storeCountAfterInvoke = Object.keys(appStore.workspaceVariables).length;
 
       if (variablesCountBeforeInvoke > 0 && variablesCountAfterInvoke === 0) {
-        await error('⚠️ VARIABLES WERE CLEARED AFTER INVOKE!');
+        await error('VARIABLES WERE CLEARED AFTER INVOKE!');
         await error(
-          `Before invoke: ${variablesCountBeforeInvoke}, After invoke: ${variablesCountAfterInvoke}, Store still has: ${storeCountAfterInvoke}`
+          `Before invoke: ${variablesCountBeforeInvoke}, After invoke: ${variablesCountAfterInvoke}`
         );
       }
 
-      // If this is a DataFrame, process the value to extract parsed_data
       let processedVariable: any = {
         ...selectedVariable.value,
         value: fullValue || 'Unable to fetch value',
         loading: false,
       };
 
-      // For DataFrames, check if the returned value is already parsed JSON (parsed_data)
       if (variable.is_dataframe && fullValue) {
         try {
-          // Try to parse as JSON - if it's an array, it's likely parsed_data
           const parsed = JSON.parse(fullValue);
           if (Array.isArray(parsed)) {
             processedVariable.parsed_data = parsed;
-            processedVariable.value = fullValue; // Keep the JSON string as value too
+            processedVariable.value = fullValue;
           } else if (typeof parsed === 'object' && parsed.parsed_data) {
-            // If it's an object with parsed_data field
             processedVariable.parsed_data = parsed.parsed_data;
           }
-          // Otherwise it's a DataFrame string representation, will be parsed by the table display logic
         } catch (e) {
-          // Not JSON, it's a string representation - that's fine, the table display will handle it
+          // Not JSON — string representation, handled by table display
         }
       }
 
@@ -300,41 +333,25 @@ const isTruncated = (value: string) => {
   return value && value.includes('[Truncated - showing first');
 };
 
-// Check if variable is a DataFrame or structured data with named columns
 const isStructuredData = (variable: any): boolean => {
   if (!variable) return false;
-
-  // Check if it's a DataFrame (check flag or type as fallback)
   if (variable.is_dataframe || (variable.type && variable.type.includes('DataFrame'))) return true;
-
-  // Check if it's a DataFrame or similar structured type
   const type = variable.type || variable.var_type?.name || '';
   return type.includes('Table') || type.includes('Dict');
 };
 
-// Check if variable data should be displayed as a table
 const isArrayData = (variable: any): boolean => {
   if (!variable) return false;
-
-  // DataFrames should be displayed as tables (check flag or type as fallback)
   if (variable.is_dataframe || (variable.type && variable.type.includes('DataFrame'))) return true;
-
-  // Check if it's an array type
-  if (variable.is_array || (variable.var_type && variable.var_type.is_array)) {
-    return true;
-  }
-
-  // Also check if the value looks like an array
+  if (variable.is_array || (variable.var_type && variable.var_type.is_array)) return true;
   const value = variable.value || '';
   return value.startsWith('[') && value.includes(',');
 };
 
-// Parse array/matrix data and generate table columns
 const getTableColumns = (variable: any): Array<{ key: string; title: string; width?: number }> => {
   const value = variable.value || '';
   const isStructured = isStructuredData(variable);
 
-  // Handle DataFrames with parsed data
   if (
     variable.is_dataframe &&
     variable.parsed_data &&
@@ -342,172 +359,84 @@ const getTableColumns = (variable: any): Array<{ key: string; title: string; wid
     variable.parsed_data.length > 0
   ) {
     const firstRow = variable.parsed_data[0];
-    const columns: Array<{ key: string; title: string; width?: number }> = [];
-
-    // DataFrame first row logged via debugLog if needed
-
-    // Add columns based on the parsed data keys
-    // Use column_names if available (from backend), otherwise use keys from first row
     const columnNames = variable.column_names || Object.keys(firstRow);
-    columnNames.forEach((key) => {
-      // Calculate appropriate width based on column name length
+    return columnNames.map((key: string) => {
       const minWidth = 100;
       const maxWidth = 300;
       const width = Math.max(minWidth, Math.min(maxWidth, key.length * 8 + 40));
-
-      columns.push({
-        title: key,
-        key: key,
-        width: width,
-      });
+      return { title: key, key, width };
     });
-
-    // DataFrame columns logged via debugLog if needed
-    return columns;
   }
 
-  // Handle DataFrames without parsed_data - check if value is already parsed JSON
   if (variable.is_dataframe) {
-    // DataFrame without parsed_data, checking if value is JSON
-
-    // Check if the value is already a JSON array (parsed DataFrame data)
     if (typeof variable.value === 'string') {
       try {
         const parsed = JSON.parse(variable.value);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // DataFrame value is JSON array, generating columns from first row
           const firstRow = parsed[0];
-          const columns: Array<{ key: string; title: string; width?: number }> = [];
-
-          // Add columns based on the parsed data keys
-          // Use column_names if available (from backend), otherwise use keys from first row
           const columnNames = variable.column_names || Object.keys(firstRow);
-          columnNames.forEach((key) => {
-            // Calculate appropriate width based on column name length
+          return columnNames.map((key: string) => {
             const minWidth = 100;
             const maxWidth = 300;
             const width = Math.max(minWidth, Math.min(maxWidth, key.length * 8 + 40));
-
-            columns.push({
-              title: key,
-              key: key,
-              width: width,
-            });
+            return { title: key, key, width };
           });
-
-          // Generated DataFrame columns from value
-          return columns;
         }
       } catch (e) {
-        // DataFrame value is not JSON, ignoring
+        // not JSON
       }
     } else if (Array.isArray(variable.value) && variable.value.length > 0) {
-      // DataFrame value is already an array, generating columns from first row
       const firstRow = variable.value[0];
-      const columns: Array<{ key: string; title: string; width?: number }> = [];
-
-      // Add columns based on the parsed data keys
-      Object.keys(firstRow).forEach((key) => {
-        columns.push({
-          title: key,
-          key: key,
-          width: 150,
-        });
-      });
-
-      // Generated DataFrame columns from value array
-      return columns;
+      return Object.keys(firstRow).map((key) => ({ title: key, key, width: 150 }));
     }
-
     return [];
   }
 
-  // Try to parse as a Julia array/matrix
   try {
-    // Simple 1D array/vector
     if (value.match(/^\[.*\]$/s) && !value.includes(';')) {
-      const columns: Array<{ key: string; title: string; width?: number }> = [];
-
-      // Only add index column for structured data
-      if (isStructured) {
-        columns.push({ title: 'Index', key: 'index', width: 60 });
-      }
-
-      columns.push({
-        title: isStructured ? 'Value' : '',
-        key: 'value',
-      });
-      return columns;
+      const cols: Array<{ key: string; title: string; width?: number }> = [];
+      if (isStructured) cols.push({ title: 'Index', key: 'index', width: 60 });
+      cols.push({ title: isStructured ? 'Value' : '', key: 'value' });
+      return cols;
     }
 
-    // 2D matrix
     const rows = value.split(';').map((r: string) => r.trim());
     if (rows.length > 1) {
-      const firstRow = rows[0]
-        .replace('[', '')
-        .split(/\s+/)
-        .filter((v: string) => v);
+      const firstRow = rows[0].replace('[', '').split(/\s+/).filter((v: string) => v);
       const numCols = firstRow.length;
-
-      const columns: Array<{ key: string; title: string; width?: number }> = [];
-
-      // Only add row number column for structured data
-      if (isStructured) {
-        columns.push({ title: 'Row', key: 'row', width: 60 });
-      }
-
-      // Remove column limit - show all columns with horizontal scrolling
+      const cols: Array<{ key: string; title: string; width?: number }> = [];
+      if (isStructured) cols.push({ title: 'Row', key: 'row', width: 60 });
       for (let i = 0; i < numCols; i++) {
-        columns.push({
-          title: isStructured ? `Col ${i + 1}` : '',
-          key: `col${i}`,
-          width: 120,
-        });
+        cols.push({ title: isStructured ? `Col ${i + 1}` : '', key: `col${i}`, width: 120 });
       }
-
-      return columns;
+      return cols;
     }
   } catch (e) {
     error(`Error parsing array structure: ${e}`);
   }
 
-  // Fallback
-  const columns: Array<{ key: string; title: string; width?: number }> = [];
-  if (isStructured) {
-    columns.push({ title: 'Index', key: 'index', width: 60 });
-  }
-  columns.push({ title: isStructured ? 'Value' : '', key: 'value' });
-  return columns;
+  const cols: Array<{ key: string; title: string; width?: number }> = [];
+  if (isStructured) cols.push({ title: 'Index', key: 'index', width: 60 });
+  cols.push({ title: isStructured ? 'Value' : '', key: 'value' });
+  return cols;
 };
 
-// Parse array/matrix data and generate table rows
 const getTableData = (variable: any): any[] => {
-  // Handle DataFrames with parsed data
   if (variable.is_dataframe && variable.parsed_data && Array.isArray(variable.parsed_data)) {
-    // Using DataFrame parsed_data
     return variable.parsed_data;
   }
 
-  // Handle DataFrames without parsed_data - check if value is already parsed JSON
   if (variable.is_dataframe) {
-    // DataFrame without parsed_data, checking if value is JSON
-
-    // Check if the value is already a JSON array (parsed DataFrame data)
     if (typeof variable.value === 'string') {
       try {
         const parsed = JSON.parse(variable.value);
-        if (Array.isArray(parsed)) {
-          // DataFrame value is JSON array, using it directly
-          return parsed;
-        }
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
-        // DataFrame value is not JSON, ignoring
+        // not JSON
       }
     } else if (Array.isArray(variable.value)) {
-      // DataFrame value is already an array, using it directly
       return variable.value;
     }
-
     return [];
   }
 
@@ -515,64 +444,44 @@ const getTableData = (variable: any): any[] => {
   const isStructured = isStructuredData(variable);
 
   try {
-    // Simple 1D array: [1, 2, 3, 4, 5]
     if (value.match(/^\[.*\]$/s) && !value.includes(';')) {
       const cleanValue = value.replace(/^\[|\]$/g, '').trim();
       const items = cleanValue.split(',').map((v: string) => v.trim());
-
       return items.map((item: string, index: number) => {
         const rowData: any = { value: item };
-        // Only include index for structured data
-        if (isStructured) {
-          rowData.index = index + 1;
-        }
+        if (isStructured) rowData.index = index + 1;
         return rowData;
       });
     }
 
-    // 2D matrix: [1 2 3; 4 5 6; 7 8 9]
-    const rows = value
-      .replace(/^\[|\]$/g, '')
-      .split(';')
-      .map((r: string) => r.trim());
-
+    const rows = value.replace(/^\[|\]$/g, '').split(';').map((r: string) => r.trim());
     return rows.map((row: string, rowIndex: number) => {
       const values = row.split(/\s+/).filter((v: string) => v);
       const rowData: any = {};
-
-      // Only include row number for structured data
-      if (isStructured) {
-        rowData.row = rowIndex + 1;
-      }
-
+      if (isStructured) rowData.row = rowIndex + 1;
       values.forEach((val: string, colIndex: number) => {
         rowData[`col${colIndex}`] = val;
       });
-
       return rowData;
     });
   } catch (e) {
     error(`Error parsing array data: ${e}`);
     const errorData: any = { value: 'Error parsing data' };
-    if (isStructured) {
-      errorData.index = 1;
-    }
+    if (isStructured) errorData.index = 1;
     return [errorData];
   }
 };
 
-// Refresh variables from backend
+// ─── Refresh variables from backend ─────────────────────────────────────────
 const refreshVariables = async () => {
   try {
     if (props.isDebugging) {
-      // During debugging: get variables from current debug frame
       try {
         const variables = await invoke<Record<string, any>>('debug_get_variables');
         if (variables && Object.keys(variables).length > 0) {
           debugVariablesLocal.value = variables;
         }
       } catch (err: any) {
-        // This is expected when debug session is not paused or doesn't exist
         const errorMessage = err?.message || String(err);
         if (
           !errorMessage.includes('not initialized') &&
@@ -584,12 +493,10 @@ const refreshVariables = async () => {
         }
       }
     } else {
-      // Normal mode: trigger workspace variables refresh
-      // This will trigger an automatic update via the workspace:variables-updated event
       try {
         await invoke('refresh_workspace_variables');
       } catch (err: any) {
-        // This is expected if no code has been executed or Julia process is not ready
+        // Expected if no code has been executed or Julia process is not ready
       }
     }
   } catch (err) {
@@ -597,19 +504,15 @@ const refreshVariables = async () => {
   }
 };
 
-// Watch for debugging state changes - refresh variables when mode changes
+// Watch for debugging state changes
 watch(
   () => props.isDebugging,
   (newValue, oldValue) => {
     if (newValue !== oldValue) {
-      // Mode changed - refresh variables for the new mode
       if (newValue) {
-        // Switched to debug mode - fetch debug variables
         refreshVariables();
       } else {
-        // Switched to normal mode - clear debug variables and fetch workspace variables if needed
         debugVariablesLocal.value = {};
-        // Only refresh if store is empty
         if (Object.keys(appStore.workspaceVariables).length === 0) {
           refreshVariables();
         }
@@ -618,7 +521,7 @@ watch(
   }
 );
 
-// Listen for variables updated event
+// ─── Event listeners ────────────────────────────────────────────────────────
 let unlistenVariables: (() => void) | null = null;
 let unlistenExecutionStopped: (() => void) | null = null;
 let unlistenWorkspaceVariables: (() => void) | null = null;
@@ -628,65 +531,40 @@ let unlistenBackendBusy: (() => void) | null = null;
 
 onMounted(async () => {
   try {
-    // Note: In normal mode, debugVariables computed property automatically uses appStore.workspaceVariables
-    // In debug mode, debugVariablesLocal will be populated by debug:execution-stopped events
-
-    // Listen for backend-busy event - DO NOT clear variables here
-    // The backend-busy event is emitted for ALL code execution, including API calls like get_variable_value
-    // We should only clear variables when actual file execution starts, which will be followed by
-    // a workspace:variables-updated event that will replace the variables anyway.
-    // Clearing here causes variables to disappear when clicking on array variables to view their contents.
     unlistenBackendBusy = await listen('backend-busy', async () => {
-      // backend-busy received - NOT clearing variables (will be updated by workspace:variables-updated when file execution completes)
+      // NOT clearing variables — will be updated by workspace:variables-updated
     });
 
-    // Listen for debug session started - clear variables when starting a new debug session
     unlistenDebugSessionStarted = await listen('debug:session-started', async () => {
       debugVariablesLocal.value = {};
-      // Also clear the store to avoid stale data
       appStore.setWorkspaceVariables({});
     });
 
-    // Listen for debug execution stopped event (includes variables)
     unlistenExecutionStopped = await listen('debug:execution-stopped', async (event: any) => {
-      // Accept both 'variables' (from debugger) and 'variable_summaries' (legacy)
       const variables = event.payload?.variables || event.payload?.variable_summaries;
-
       if (variables) {
-        // Variables are already filtered by Julia backend
-        // In debug mode, update debugVariablesLocal (which debugVariables computed property uses)
         debugVariablesLocal.value = variables;
       } else {
         await warn('No variables in payload');
-        // Clear debug variables if no variables in payload (shouldn't happen, but be safe)
         debugVariablesLocal.value = {};
       }
     });
 
     unlistenVariables = await listen('debug:variables-updated', async (event: any) => {
       if (event.payload) {
-        // Variables are already filtered by Julia backend
-        // In debug mode, update debugVariablesLocal
         debugVariablesLocal.value = event.payload;
       } else {
         await warn('debug:variables-updated event has no payload');
       }
     });
 
-    // Listen for workspace variables after normal execution
-    // Only update if not debugging - debug mode uses debug:execution-stopped events
     unlistenWorkspaceVariables = await listen('workspace:variables-updated', async (event: any) => {
-      // Only update if not in debug mode - debug mode should use debug:execution-stopped
       if (!props.isDebugging) {
         if (event.payload) {
-          // Update the store (debugVariables computed property will automatically reflect this)
           appStore.setWorkspaceVariables(event.payload);
         } else {
-          // Don't clear variables if payload is missing - this might be a spurious event
-          // (e.g., triggered by get_variable_value call). Just ignore it.
-          // The store will persist the existing variables, and debugVariables computed property will reflect them.
           const storeCount = Object.keys(appStore.workspaceVariables).length;
-          await warn('⚠️ workspace:variables-updated event has NO payload!');
+          await warn('workspace:variables-updated event has NO payload!');
           await warn(
             `Ignoring to prevent accidental clearing. Store still has: ${storeCount} variables`
           );
@@ -694,20 +572,15 @@ onMounted(async () => {
       }
     });
 
-    // Listen for debug session completed (includes final variables)
     unlistenDebugCompleted = await listen('debug:session-completed', async (event: any) => {
       const variables = event.payload?.variables;
-
       if (variables) {
-        // Variables are already filtered by Julia backend
-        // In debug mode, update debugVariablesLocal
         debugVariablesLocal.value = variables;
       } else {
         await warn('No variables in session-completed payload');
       }
     });
 
-    // After setting up event listeners, check if variables are missing and refresh if needed
     const hasVariables = props.isDebugging
       ? Object.keys(debugVariablesLocal.value).length > 0
       : Object.keys(appStore.workspaceVariables).length > 0;
@@ -721,24 +594,12 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (unlistenVariables) {
-    unlistenVariables();
-  }
-  if (unlistenExecutionStopped) {
-    unlistenExecutionStopped();
-  }
-  if (unlistenWorkspaceVariables) {
-    unlistenWorkspaceVariables();
-  }
-  if (unlistenDebugCompleted) {
-    unlistenDebugCompleted();
-  }
-  if (unlistenDebugSessionStarted) {
-    unlistenDebugSessionStarted();
-  }
-  if (unlistenBackendBusy) {
-    unlistenBackendBusy();
-  }
+  if (unlistenVariables) unlistenVariables();
+  if (unlistenExecutionStopped) unlistenExecutionStopped();
+  if (unlistenWorkspaceVariables) unlistenWorkspaceVariables();
+  if (unlistenDebugCompleted) unlistenDebugCompleted();
+  if (unlistenDebugSessionStarted) unlistenDebugSessionStarted();
+  if (unlistenBackendBusy) unlistenBackendBusy();
 });
 </script>
 
@@ -747,17 +608,52 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #282828;
+  background-color: var(--jl-panel-bg);
 }
 
+/* ─── Toolbar ────────────────────────────────────────────────────────────── */
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--jl-panel-bg-alt, #252525);
+  border-bottom: 1px solid var(--jl-border);
+  flex-shrink: 0;
+}
+
+.workspace-count {
+  font-size: 11px;
+  color: var(--jl-text-secondary);
+  font-family: var(--jl-font-ui);
+}
+
+.workspace-refresh {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--jl-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 1px 4px;
+  line-height: 1;
+  transition: all 0.12s ease;
+}
+.workspace-refresh:hover {
+  color: var(--jl-accent-green);
+  border-color: var(--jl-border-light, #2a2a2a);
+  background: rgba(56, 152, 38, 0.08);
+}
+
+/* ─── Panel content ──────────────────────────────────────────────────────── */
 .panel-content {
   flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  background-color: #282828;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.no-debug-session,
 .no-variables {
   display: flex;
   flex-direction: column;
@@ -765,107 +661,82 @@ onUnmounted(() => {
   justify-content: center;
   padding: 32px 16px;
   text-align: center;
-  color: #888;
+  color: var(--jl-text-secondary);
+  font-family: var(--jl-font-ui);
 }
-
-.no-debug-session p,
 .no-variables p {
   margin: 8px 0 0;
   font-size: 13px;
 }
-
-.no-debug-session .hint,
 .no-variables .hint {
   font-size: 11px;
-  color: #666;
+  color: var(--jl-text-muted);
   margin-top: 4px;
 }
 
-.variables-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* ─── DataTable overrides ────────────────────────────────────────────────── */
+.workspace-table {
+  flex: 1;
 }
 
-.variable-item {
-  background-color: #252526;
-  border: 1px solid #3e3e42;
-  border-radius: 4px;
-  padding: 8px;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.variable-item:hover {
-  background-color: #2d2d30;
-}
-
-.variable-item.expandable {
-  cursor: pointer;
-  border-color: #389826;
-}
-
-.variable-item.expandable:hover {
-  background-color: #2a3428;
-  border-color: #4aa830;
-  transform: translateY(-1px);
-}
-
-.variable-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-
-.variable-name {
+/* Custom cell rendering classes */
+:deep(.cell-name) {
+  font-family: var(--jl-font-mono);
   font-weight: 600;
-  color: #4aa830;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  color: var(--jl-accent-green);
+  font-size: 12px;
 }
 
-.variable-type {
-  font-size: 11px;
-  color: #888;
+:deep(.cell-type) {
   font-style: italic;
+  color: var(--jl-text-secondary);
+  font-size: 11px;
 }
 
-.variable-value {
-  color: #cccccc;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  word-break: break-all;
-  padding: 4px 0;
+:deep(.cell-size) {
+  color: var(--jl-text-secondary);
+  font-family: var(--jl-font-mono);
+  font-size: 11px;
 }
 
-/* Scrollbar styling */
-.panel-content::-webkit-scrollbar {
-  width: 8px;
+:deep(.cell-value) {
+  font-family: var(--jl-font-mono);
+  color: var(--jl-text-primary);
+  font-size: 12px;
 }
 
-.panel-content::-webkit-scrollbar-track {
-  background: #282828;
+/* Expandable row styling */
+:deep(.expandable-row td) {
+  border-left: 2px solid var(--jl-accent-green);
+}
+:deep(.expandable-row:hover td) {
+  background-color: rgba(56, 152, 38, 0.06);
 }
 
-.panel-content::-webkit-scrollbar-thumb {
-  background: #424242;
-  border-radius: 4px;
+/* Compact row height for MATLAB density */
+:deep(.n-data-table .n-data-table-td) {
+  padding: 4px 8px;
+}
+:deep(.n-data-table .n-data-table-th) {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--jl-font-ui);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--jl-text-secondary);
 }
 
-.panel-content::-webkit-scrollbar-thumb:hover {
-  background: #4e4e4e;
+/* Dark theme table background */
+:deep(.n-data-table) {
+  --n-th-color: var(--jl-panel-bg-alt, #252525);
+  --n-td-color: var(--jl-panel-bg);
+  --n-td-color-hover: rgba(255, 255, 255, 0.03);
+  --n-border-color: var(--jl-border);
+  --n-th-text-color: var(--jl-text-secondary);
+  --n-td-text-color: var(--jl-text-primary);
 }
 
-.expand-icon {
-  margin-left: 8px;
-  opacity: 0.6;
-  font-size: 14px;
-}
-
-.variable-item.expandable:hover .expand-icon {
-  opacity: 1;
-}
-
-/* Modal styles */
+/* ─── Modal styles (preserved from original) ─────────────────────────────── */
 .modal-content {
   display: flex;
   flex-direction: column;
@@ -874,15 +745,14 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Horizontal metadata layout */
 .modal-metadata {
   display: flex;
   flex-wrap: wrap;
   gap: 24px;
   padding: 8px 12px;
-  background-color: #252526;
+  background-color: var(--jl-panel-bg-alt, #252525);
   border-radius: 4px;
-  border: 1px solid #3e3e42;
+  border: 1px solid var(--jl-border);
 }
 
 .metadata-item {
@@ -891,14 +761,12 @@ onUnmounted(() => {
   gap: 8px;
   font-size: 13px;
 }
-
 .metadata-item strong {
-  color: #4aa830;
+  color: var(--jl-accent-green);
   font-weight: 600;
 }
-
 .metadata-item span {
-  color: #cccccc;
+  color: var(--jl-text-primary);
 }
 
 .truncation-warning {
@@ -913,13 +781,13 @@ onUnmounted(() => {
 }
 
 .modal-value {
-  background-color: #1e1e1e;
-  border: 1px solid #3e3e42;
+  background-color: var(--jl-bg);
+  border: 1px solid var(--jl-border);
   border-radius: 4px;
   padding: 12px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: var(--jl-font-mono);
   font-size: 12px;
-  color: #cccccc;
+  color: var(--jl-text-primary);
   max-height: 400px;
   overflow: auto;
   white-space: pre-wrap;
@@ -935,62 +803,69 @@ onUnmounted(() => {
   width: 100%;
   max-height: 700px;
 }
-
-/* Hide headers for arrays/matrices (not for structured data like DataFrames) */
 .table-container.hide-headers thead {
   display: none;
 }
 
-/* Style the HTML table */
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: #1e1e1e;
+  background-color: var(--jl-bg);
   font-size: 12px;
   min-width: max-content;
 }
-
 .data-table th {
-  background-color: #252526;
-  color: #4aa830;
+  background-color: var(--jl-panel-bg-alt, #252525);
+  color: var(--jl-accent-green);
   font-weight: 600;
   white-space: nowrap;
   padding: 8px 12px;
   text-align: left;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--jl-border);
   position: sticky;
   top: 0;
   z-index: 1;
 }
-
 .data-table td {
-  color: #cccccc;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  color: var(--jl-text-primary);
+  font-family: var(--jl-font-mono);
   white-space: nowrap;
   padding: 6px 12px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--jl-border);
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .data-table tr:hover {
-  background-color: #2d2d30;
+  background-color: rgba(255, 255, 255, 0.03);
 }
-
 .data-table tr.even {
-  background-color: #1a1a1a;
+  background-color: var(--jl-bg);
 }
-
 .data-table tr.even:hover {
-  background-color: #2d2d30;
+  background-color: rgba(255, 255, 255, 0.03);
 }
 
 .loading-indicator {
   display: flex;
   align-items: center;
   padding: 20px;
-  color: #4aa830;
+  color: var(--jl-accent-green);
   font-size: 13px;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+.panel-content::-webkit-scrollbar {
+  width: 8px;
+}
+.panel-content::-webkit-scrollbar-track {
+  background: var(--jl-panel-bg);
+}
+.panel-content::-webkit-scrollbar-thumb {
+  background: #424242;
+  border-radius: 4px;
+}
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: #4e4e4e;
 }
 </style>

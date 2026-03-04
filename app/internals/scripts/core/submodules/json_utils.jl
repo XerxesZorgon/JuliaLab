@@ -1,5 +1,5 @@
 # Compute42 JSON Utilities
-# Safe JSON value extraction utilities that handle JSON.Object, JSON.Array, and primitive types consistently
+# Safe JSON value extraction utilities that handle Dict, Array, and primitive types consistently
 
 # Extract a string value from JSON, handling all possible JSON types
 # Returns Union{String, Nothing} - returns nothing if extraction fails
@@ -8,8 +8,8 @@ function extract_string(value)::Union{String, Nothing}
         return nothing
     elseif isa(value, String)
         return value
-    elseif isa(value, JSON.Object)
-        # JSON.Object is a Dict-like structure
+    elseif isa(value, Dict)
+        # Dict from JSON parsing
         # Try to extract the value if it's a single-key object
         try
             keys_list = collect(keys(value))
@@ -57,7 +57,7 @@ function extract_int(value)::Union{Int, Nothing}
         catch
             return nothing
         end
-    elseif isa(value, JSON.Object)
+    elseif isa(value, Dict)
         # Try to extract from single-key object
         try
             keys_list = collect(keys(value))
@@ -90,7 +90,7 @@ function extract_bool(value)::Union{Bool, Nothing}
         return nothing
     elseif isa(value, Bool)
         return value
-    elseif isa(value, JSON.Object)
+    elseif isa(value, Dict)
         # Try to extract from single-key object
         try
             keys_list = collect(keys(value))
@@ -126,13 +126,6 @@ function extract_dict(value)::Union{Dict, Nothing}
         return nothing
     elseif isa(value, Dict)
         return value
-    elseif isa(value, JSON.Object)
-        # Convert JSON.Object to Dict
-        try
-            return Dict{String, Any}(value)
-        catch
-            return nothing
-        end
     else
         return nothing
     end
@@ -157,11 +150,11 @@ function extract_array(value)::Union{Array, Nothing}
     end
 end
 
-# Extract a required string field from a data dictionary or JSON.Object
+# Extract a required string field from a data dictionary
 # Throws an error if the field is missing or cannot be extracted
 function extract_required_string(data, field_name::String)::String
-    # Handle both Dict and JSON.Object
-    data_dict = isa(data, JSON.Object) ? Dict{String, Any}(data) : data
+    # Ensure we have a Dict
+    data_dict = data
     
     if !haskey(data_dict, field_name)
         error("Missing required field: $(field_name)")
@@ -175,11 +168,11 @@ function extract_required_string(data, field_name::String)::String
     return value
 end
 
-# Extract an optional string field from a data dictionary or JSON.Object
+# Extract an optional string field from a data dictionary
 # Returns nothing if the field is missing or cannot be extracted
 function extract_optional_string(data, field_name::String)::Union{String, Nothing}
-    # Handle both Dict and JSON.Object
-    data_dict = isa(data, JSON.Object) ? Dict{String, Any}(data) : data
+    # Ensure we have a Dict
+    data_dict = data
     
     if !haskey(data_dict, field_name)
         return nothing
@@ -188,11 +181,11 @@ function extract_optional_string(data, field_name::String)::Union{String, Nothin
     return extract_string(data_dict[field_name])
 end
 
-# Extract a required integer field from a data dictionary or JSON.Object
+# Extract a required integer field from a data dictionary
 # Throws an error if the field is missing or cannot be extracted
 function extract_required_int(data, field_name::String)::Int
-    # Handle both Dict and JSON.Object
-    data_dict = isa(data, JSON.Object) ? Dict{String, Any}(data) : data
+    # Ensure we have a Dict
+    data_dict = data
     
     if !haskey(data_dict, field_name)
         error("Missing required field: $(field_name)")
@@ -206,11 +199,11 @@ function extract_required_int(data, field_name::String)::Int
     return value
 end
 
-# Extract an optional integer field from a data dictionary or JSON.Object
+# Extract an optional integer field from a data dictionary
 # Returns nothing if the field is missing or cannot be extracted
 function extract_optional_int(data, field_name::String)::Union{Int, Nothing}
-    # Handle both Dict and JSON.Object
-    data_dict = isa(data, JSON.Object) ? Dict{String, Any}(data) : data
+    # Ensure we have a Dict
+    data_dict = data
     
     if !haskey(data_dict, field_name)
         return nothing

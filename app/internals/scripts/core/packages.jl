@@ -9,7 +9,15 @@ try
     Pkg.activate()
     
     # List of required packages for JuliaLab core functionality
-    required_packages = ["JuliaInterpreter", "JSON", "Revise"]
+    required_packages = [
+        "JuliaInterpreter",
+        "JSON",
+        "Revise",
+        "LanguageServer",
+        "JuliaFormatter",
+        "CairoMakie",
+        "Debugger"
+    ]
     
     # Check which packages are already installed in default environment
     installed_packages = keys(Pkg.project().dependencies)
