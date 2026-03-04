@@ -155,8 +155,8 @@ use crate::commands::{
     projects::{read_project_toml, write_project_toml, generate_uuid},
     process::{get_session_status, init_terminal_session, is_backend_ready, restart_julia, get_backend_busy_status},
     plot::{
-        clear_all_plots, delete_plot, emit_plot_navigator_update, get_all_plots, get_plot,
-        serve_plot_image, test_plot_system,
+        clear_all_plots, delete_plot, emit_plot_navigator_update, export_plot, get_all_plots,
+        get_plot, serve_plot_image, test_plot_system,
     },
     utils::{get_system_info, open_url, set_last_opened_folder, is_subscription_enabled, is_ai_enabled, get_app_settings, set_app_settings, get_available_fonts},
     file_server::{start_file_server, stop_file_server, get_file_server_url, is_file_server_running},
@@ -273,6 +273,7 @@ pub fn run() {
             get_plot,
             delete_plot,
             clear_all_plots,
+            export_plot,
             test_plot_system,
             emit_plot_navigator_update,
             serve_plot_image,

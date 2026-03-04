@@ -179,7 +179,7 @@ pub async fn serve_plot_image(
 ) -> Result<(String, String), AppError> {
     // Get the plot data
     let app_state = app_handle.state::<AppState>();
-    
+
     match app_state.actor_system.plot_actor.send(GetPlots).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
         Ok(plots) => {
             let plot = plots.into_iter().find(|p| p.id == plot_id);
@@ -199,4 +199,59 @@ pub async fn serve_plot_image(
             Err(AppError::InternalError(format!("Failed to get plots: {}", e)))
         }
     }
+}
+
+/// Export a plot to a file (PNG format)
+#[tauri::command]
+pub async fn export_plot(
+    plot_id: String,
+    file_path: String,
+    format: String,
+    app_handle: AppHandle,
+) -> Result<String, AppError> {
+    debug!("Exporting plot {} to {} as {}", plot_id, file_path, format);
+
+    // Only PNG format is supported for now
+    if format != "png" {
+        return Err(AppError::ValidationError(format!("Unsupported export format: {}", format)));
+    }
+
+    // Get the plot data
+    let app_state = app_handle.state::<AppState>();
+    let plot_data = match app_state.actor_system.plot_actor.send(GetPlots).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
+        Ok(plots) => {
+            plots.into_iter().find(|p| p.id == plot_id).ok_or_else(|| {
+                AppError::ValidationError(format!("Plot not found: {}", plot_id))
+            })?
+        }
+        Err(e) => {
+            error!("Failed to get plots: {}", e);
+            return Err(AppError::InternalError(format!("Failed to get plots: {}", e)));
+        }
+    };
+
+    // Check if it's an image type
+    if !plot_data.mime_type.starts_with("image/") {
+        return Err(AppError::ValidationError(format!("Plot is not an image type: {}", plot_data.mime_type)));
+    }
+
+    // Decode base64 data
+    let image_data = if plot_data.data.contains(',') {
+        // Remove data URL prefix if present (e.g., "data:image/png;base64,...")
+        plot_data.data.split(',').nth(1).unwrap_or(&plot_data.data)
+    } else {
+        &plot_data.data
+    };
+
+    let decoded = base64::decode(image_data).map_err(|e| {
+        AppError::InternalError(format!("Failed to decode base64 image data: {}", e))
+    })?;
+
+    // Write to file
+    std::fs::write(&file_path, decoded).map_err(|e| {
+        AppError::InternalError(format!("Failed to write image to file: {}", e))
+    })?;
+
+    debug!("Successfully exported plot to {}", file_path);
+    Ok(file_path)
 }

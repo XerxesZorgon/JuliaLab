@@ -10,6 +10,9 @@
         @click="activeTab = tab; layoutStore.ribbonVisible = true"
       >
         {{ tab }}
+        <span v-if="tab === 'PLOTS' && plotStore.plotCount > 0" class="ribbon-tab-badge">
+          {{ plotStore.plotCount > 99 ? '99+' : plotStore.plotCount }}
+        </span>
       </button>
 
       <!-- Spacer -->
@@ -44,10 +47,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue';
 import { useLayoutStore } from '../../store/layoutStore';
+import { usePlotStore } from '../../store/plotStore';
 import HomeTab from '../ribbon/HomeTab.vue';
 import ViewTab from '../ribbon/ViewTab.vue';
 
 const layoutStore = useLayoutStore();
+const plotStore = usePlotStore();
 
 const TABS = ['HOME', 'PLOTS', 'APPS', 'LIVE EDITOR', 'INSERT', 'VIEW'] as const;
 type TabName = typeof TABS[number];
@@ -104,6 +109,7 @@ onUnmounted(() => {
 }
 
 .ribbon-tab {
+  position: relative;
   height: 100%;
   padding: 0 14px;
   background: transparent;
@@ -117,6 +123,24 @@ onUnmounted(() => {
   font-family: var(--jl-font-ui);
   letter-spacing: 0.04em;
   transition: all 0.1s;
+}
+
+.ribbon-tab-badge {
+  position: absolute;
+  top: 4px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jl-accent-green);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 8px;
+  line-height: 1;
 }
 .ribbon-tab:hover {
   color: var(--jl-text-secondary);

@@ -82,22 +82,42 @@
       v-if="currentPlot"
     >
       <template #header>
-        <div style="display: flex; justify-content: space-between; align-items: center">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%">
           <n-text>Plot Viewer</n-text>
-          <n-space v-if="plots.length > 1">
-            <n-button size="small" @click="previousPlot" :disabled="currentPlotIndex <= 0">
-              <n-icon><ChevronBackOutline /></n-icon>
-            </n-button>
-            <n-text style="font-size: 12px; color: #ccc">
-              {{ currentPlotIndex + 1 }} / {{ plots.length }}
-            </n-text>
-            <n-button
-              size="small"
-              @click="nextPlot"
-              :disabled="currentPlotIndex >= plots.length - 1"
-            >
-              <n-icon><ChevronForwardOutline /></n-icon>
-            </n-button>
+          <n-space>
+            <!-- Navigation controls -->
+            <n-space v-if="plots.length > 1">
+              <n-button size="small" @click="previousPlot" :disabled="currentPlotIndex <= 0">
+                <n-icon><ChevronBackOutline /></n-icon>
+              </n-button>
+              <n-text style="font-size: 12px; color: #ccc">
+                {{ currentPlotIndex + 1 }} / {{ plots.length }}
+              </n-text>
+              <n-button
+                size="small"
+                @click="nextPlot"
+                :disabled="currentPlotIndex >= plots.length - 1"
+              >
+                <n-icon><ChevronForwardOutline /></n-icon>
+              </n-button>
+            </n-space>
+            <!-- Export and Copy controls -->
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button size="small" @click="handleCopy">
+                  <n-icon><CopyOutline /></n-icon>
+                </n-button>
+              </template>
+              Copy to Clipboard
+            </n-tooltip>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button size="small" @click="handleExport">
+                  <n-icon><SaveOutline /></n-icon>
+                </n-button>
+              </template>
+              Export as PNG
+            </n-tooltip>
           </n-space>
         </div>
       </template>
@@ -191,17 +211,20 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { NSpace, NButton, NTooltip, NText, NEmpty, NModal, NIcon } from 'naive-ui';
+import { NSpace, NButton, NTooltip, NText, NEmpty, NModal, NIcon, useMessage } from 'naive-ui';
 import {
   TrashOutline,
   TrendingUpOutline,
   CloseOutline,
   ChevronBackOutline,
   ChevronForwardOutline,
+  SaveOutline,
+  CopyOutline,
 } from '@vicons/ionicons5';
 import { usePlotStore } from '../../store/plotStore';
 import { invoke } from '@tauri-apps/api/core';
 import { basename } from '@tauri-apps/api/path';
+import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 import { info, warn, error, logObject, debug } from '../../utils/logger';
 
 const plotStore = usePlotStore();
@@ -394,6 +417,79 @@ const deleteCurrentPlot = async () => {
     debug(`Deleting current plot: ${currentPlot.value.id}`);
     await deletePlot(currentPlot.value.id);
     showPlotModal.value = false;
+  }
+};
+
+const message = useMessage();
+
+const handleExport = async () => {
+  if (!currentPlot.value) return;
+
+  try {
+    // Show save dialog to get file path
+    const filePath = await saveDialog({
+      defaultPath: `plot_${currentPlot.value.id}.png`,
+      filters: [{
+        name: 'PNG Image',
+        extensions: ['png']
+      }]
+    });
+
+    if (!filePath) {
+      // User cancelled the dialog
+      return;
+    }
+
+    // Call the Tauri command to export the plot
+    const savedPath = await invoke('export_plot', {
+      plotId: currentPlot.value.id,
+      filePath: filePath,
+      format: 'png'
+    });
+
+    if (savedPath) {
+      message.success(`Plot exported to ${savedPath}`);
+    }
+  } catch (err) {
+    error('Failed to export plot:', err);
+    message.error(`Failed to export plot: ${err}`);
+  }
+};
+
+const handleCopy = async () => {
+  if (!currentPlot.value) return;
+
+  try {
+    const imageSrc = getImageSrcForPlot(currentPlot.value);
+    if (!imageSrc) {
+      message.error('No image data available to copy');
+      return;
+    }
+
+    // If it's a data URL, we can copy directly
+    if (imageSrc.startsWith('data:image/')) {
+      const base64Data = imageSrc.split(',')[1];
+      const blob = await fetch(imageSrc).then(res => res.blob());
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+
+      message.success('Plot copied to clipboard');
+    } else if (imageSrc.startsWith('http')) {
+      // Fetch from HTTP server and convert to blob
+      const response = await fetch(imageSrc);
+      const blob = await response.blob();
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+
+      message.success('Plot copied to clipboard');
+    }
+  } catch (err) {
+    error('Failed to copy plot to clipboard:', err);
+    message.error(`Failed to copy plot: ${err}`);
   }
 };
 

@@ -32,20 +32,6 @@
           </div>
         </n-collapse-item>
 
-        <!-- Plot Library Section -->
-        <n-collapse-item name="plots" title="Plots">
-          <template #header>
-            <div class="accordion-header">
-              <n-icon><TrendingUpOutline /></n-icon>
-              <span class="header-text">Plots</span>
-              <n-badge v-if="plotCount > 0" :value="plotCount" :max="99" class="header-badge" />
-            </div>
-          </template>
-          <div style="flex-grow: 1; display: flex; flex-direction: column; min-height: 0">
-            <PlotLibrary />
-          </div>
-        </n-collapse-item>
-
         <!-- Variables Section -->
         <n-collapse-item name="variables" title="Variables">
           <template #header>
@@ -79,13 +65,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { NCollapse, NCollapseItem, NBadge, NIcon, NButton } from 'naive-ui';
-import { FolderOutline, TrendingUpOutline, CodeOutline } from '@vicons/ionicons5';
+import { NCollapse, NCollapseItem, NIcon } from 'naive-ui';
+import { FolderOutline, CodeOutline } from '@vicons/ionicons5';
 import { FileExplorer } from '../FileExplorer';
-import PlotLibrary from '../shared/PlotLibrary.vue';
 import EnvironmentInfo from '../shared/EnvironmentInfo.vue';
 import VariablesPanel from '../HomeView/VariablesPanel.vue';
-import { usePlotStore } from '../../store/plotStore';
 import { useAppStore } from '../../store/appStore';
 
 const expandedNames = ref(['explorer']); // Start with only explorer expanded
@@ -96,8 +80,6 @@ const defaultExpandedNames = computed(() => {
   return ['explorer']; // Only explorer expanded by default
 });
 
-const plotStore = usePlotStore();
-const plotCount = computed(() => plotStore.plotCount);
 const appStore = useAppStore();
 
 // Plot listening is now initialized globally in the plot store
@@ -170,17 +152,6 @@ onMounted(async () => {
   min-height: 0 !important;
 }
 
-/* Make the plots section take minimal space when collapsed */
-:deep(.n-collapse-item[name='plots']) {
-  flex-shrink: 0 !important;
-}
-
-/* When plots is expanded, it should take minimal space */
-:deep(.n-collapse-item[name='plots'].n-collapse-item--expanded) {
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-}
-
 :deep(.n-collapse) {
   background-color: #282828 !important;
   border: none !important;
@@ -216,19 +187,6 @@ onMounted(async () => {
   flex-shrink: 0 !important;
   flex-grow: 0 !important;
   min-height: 32px !important; /* Ensure header is still clickable */
-}
-
-/* When explorer is collapsed, plots should take the space */
-:deep(.n-collapse-item[name='explorer']:not(.n-collapse-item--expanded)) {
-  flex-grow: 0 !important;
-  flex-shrink: 0 !important;
-}
-
-/* When explorer is collapsed, plots should expand to fill space */
-:deep(
-  .n-collapse-item[name='explorer']:not(.n-collapse-item--expanded) + .n-collapse-item[name='plots']
-) {
-  flex-grow: 1 !important;
 }
 
 :deep(.n-collapse-item + .n-collapse-item) {
@@ -293,20 +251,6 @@ onMounted(async () => {
 ) {
   flex-grow: 1 !important;
   min-height: 0 !important;
-}
-
-/* Plots content wrapper should take minimal space when expanded */
-:deep(.n-collapse-item[name='plots'].n-collapse-item--expanded .n-collapse-item__content-wrapper) {
-  flex-shrink: 0 !important;
-  flex-grow: 0 !important;
-}
-
-/* Plots content wrapper should take minimal space when collapsed */
-:deep(
-  .n-collapse-item[name='plots']:not(.n-collapse-item--expanded) .n-collapse-item__content-wrapper
-) {
-  height: 0 !important;
-  overflow: hidden !important;
 }
 
 /* Explorer content wrapper should take minimal space when collapsed */

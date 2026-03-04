@@ -9,17 +9,25 @@
           <DiagnosticsPanel :activeFilePath="activeFilePath" @count="onDiagCount" />
         </div>
       </n-tab-pane>
+      <n-tab-pane name="plots" :tab="plotsTabTitle">
+        <div class="pane-body">
+          <PlotLibrary />
+        </div>
+      </n-tab-pane>
     </n-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { NTabs, NTabPane } from 'naive-ui';
 import TerminalView from './TerminalView.vue';
 import DiagnosticsPanel from './DiagnosticsPanel.vue';
+import PlotLibrary from '../shared/PlotLibrary.vue';
+import { usePlotStore } from '../../store/plotStore';
 
-const activeTab = ref<'terminal' | 'diagnostics'>('terminal');
+const plotStore = usePlotStore();
+const activeTab = ref<'terminal' | 'diagnostics' | 'plots'>('terminal');
 const activeFilePath = ref<string | null>(null);
 const diagCount = ref<number>(0);
 
@@ -27,9 +35,22 @@ const diagnosticsTabTitle = computed(() =>
   diagCount.value > 0 ? `Diagnostics (${diagCount.value})` : 'Diagnostics'
 );
 
+const plotsTabTitle = computed(() =>
+  plotStore.plotCount > 0 ? `Plots (${plotStore.plotCount})` : 'Plots'
+);
+
 function onDiagCount(n: number) {
   diagCount.value = n;
 }
+
+// Auto-switch to Plots tab when a new plot arrives
+let previousPlotCount = plotStore.plotCount;
+watch(() => plotStore.plotCount, (newCount) => {
+  if (newCount > previousPlotCount) {
+    activeTab.value = 'plots';
+  }
+  previousPlotCount = newCount;
+});
 
 // Listen for active file change events from EditorView
 window.addEventListener('active-file-changed', (e: any) => {
