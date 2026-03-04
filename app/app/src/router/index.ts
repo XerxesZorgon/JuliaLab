@@ -9,7 +9,7 @@ const routes: Array<RouteRecordRaw> = [
     component: MainLayout,
     children: [
       {
-        path: '',
+        path: '/',
         name: 'Home',
         component: () => import('../components/HomeView/EditorLayout.vue'), // This will show EditorView and TerminalView
       },

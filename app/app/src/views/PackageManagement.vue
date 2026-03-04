@@ -263,8 +263,15 @@ const handleResize = () => {
   calculateTableMaxHeight();
 };
 
-const goBack = () => {
-  router.push({ name: 'Home' });
+const goBack = async () => {
+  try {
+    await router.push({ name: 'Home' });
+  } catch (err) {
+    // NavigationDuplicated errors are harmless
+    if (err?.name !== 'NavigationDuplicated') {
+      console.error('Navigation error:', err);
+    }
+  }
 };
 
 const refreshPackages = async () => {

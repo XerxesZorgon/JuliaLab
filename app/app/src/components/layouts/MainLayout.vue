@@ -1,7 +1,14 @@
 <template>
   <div class="julialab-root">
-    <!-- TopBar: breadcrumb + action buttons -->
-    <div class="topbar">
+    <!-- Left Navigation Rail -->
+    <div class="nav-rail">
+      <NavigationRail @navigate="handleNavigate" />
+    </div>
+    
+    <!-- Main content area -->
+    <div class="main-content">
+      <!-- TopBar: breadcrumb + action buttons -->
+      <div class="topbar">
       <div class="topbar-left">
         <span class="topbar-breadcrumb">{{ breadcrumb }}</span>
       </div>
@@ -139,8 +146,9 @@
       </span>
     </div>
 
-    <!-- Status Bar (bottom of window) -->
-    <StatusBar />
+      <!-- Status Bar (bottom of window) -->
+      <StatusBar />
+    </div>
   </div>
 </template>
 
@@ -162,6 +170,7 @@ import {
   SaveOutline,
 } from '@vicons/ionicons5';
 
+import NavigationRail from './NavigationRail.vue';
 import LeftPanelAccordion from './LeftPanelAccordion.vue';
 import StatusBar from './StatusBar.vue';
 import EditorView from '../HomeView/EditorView.vue';
@@ -296,13 +305,33 @@ const handleOpenPackageSettings = (projectPath) => {
   }
 };
 
+const handleNavigate = (view) => {
+  debug(`MainLayout: Navigating to view: ${view}`);
+  switch (view) {
+    case 'explorer':
+      router.push({ name: 'Home' });
+      break;
+    case 'packages':
+      router.push({ name: 'PackageManagement' });
+      break;
+    case 'settings':
+      router.push({ name: 'Settings' });
+      break;
+    case 'about':
+      router.push({ name: 'About' });
+      break;
+    default:
+      debug(`MainLayout: Unknown view: ${view}`);
+  }
+};
+
 // --- Event listeners (preserved from original) ---
 const selectedDirectoryListenerSetup = ref(false);
+let unlistenSelectedDirectory;
 
 onMounted(async () => {
   appStore.setInitialProjectLoadAttempted(true);
 
-  let unlistenSelectedDirectory;
   try {
     if (selectedDirectoryListenerSetup.value) return;
     selectedDirectoryListenerSetup.value = true;
@@ -319,13 +348,13 @@ onMounted(async () => {
   } catch (err) {
     error('MainLayout.vue: Failed to set up selected-directory event listener:', err);
   }
+});
 
-  onUnmounted(() => {
-    if (unlistenSelectedDirectory) {
-      unlistenSelectedDirectory();
-      selectedDirectoryListenerSetup.value = false;
-    }
-  });
+onUnmounted(() => {
+  if (unlistenSelectedDirectory) {
+    unlistenSelectedDirectory();
+    selectedDirectoryListenerSetup.value = false;
+  }
 });
 
 // Listen for Julia daemon ready events (moved from EditorLayout)
@@ -388,10 +417,31 @@ defineExpose({
   height: 100vh;
   width: 100vw;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background-color: var(--jl-bg);
   color: var(--jl-text-primary);
   font-family: var(--jl-font-ui);
+  overflow: hidden;
+}
+
+/* === Navigation Rail === */
+.nav-rail {
+  width: 60px;
+  min-width: 60px;
+  height: 100vh;
+  background-color: #282828;
+  border-right: 1px solid var(--jl-border);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+/* === Main Content === */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100vh;
   overflow: hidden;
 }
 
