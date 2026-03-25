@@ -85,9 +85,9 @@ const handleTabChange = (value: string) => {
 const tabComponents: Record<TabName, Component> = {
   HOME: HomeTab,
   PLOTS: PlotsToolbar,
-  APPS: { template: '<div class="ribbon-stub">APPS tab content</div>' },
+  APPS: { render() { return null; } },
   'LIVE EDITOR': LiveEditorTab,
-  INSERT: { template: '<div class="ribbon-stub">INSERT tab content</div>' },
+  INSERT: { render() { return null; } },
   VIEW: ViewTab,
 };
 
