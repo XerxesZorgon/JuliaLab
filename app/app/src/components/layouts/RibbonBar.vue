@@ -1,42 +1,51 @@
 <template>
   <div class="ribbon-bar">
-    <!-- Tab bar row -->
-    <div class="ribbon-tabs">
-      <button
-        v-for="tab in TABS"
-        :key="tab"
-        class="ribbon-tab"
-        :class="{ active: activeTab === tab }"
-        @click="activeTab = tab; layoutStore.ribbonVisible = true"
+    <!-- Tab bar row using Naive UI n-tabs -->
+    <div class="ribbon-tabs-container">
+      <n-tabs
+        v-model:value="activeTab"
+        type="card"
+        size="small"
+        @update:value="handleTabChange"
+        class="ribbon-n-tabs"
       >
-        {{ tab }}
-        <span v-if="tab === 'PLOTS' && plotStore.plotCount > 0" class="ribbon-tab-badge">
-          {{ plotStore.plotCount > 99 ? '99+' : plotStore.plotCount }}
-        </span>
-      </button>
-
-      <!-- Spacer -->
-      <div class="ribbon-tabs-spacer" />
+        <n-tab v-for="tab in TABS" :key="tab" :name="tab" :label="tab">
+          <template #default>
+            {{ tab }}
+            <span v-if="tab === 'PLOTS' && plotStore.plotCount > 0" class="ribbon-tab-badge">
+              {{ plotStore.plotCount > 99 ? '99+' : plotStore.plotCount }}
+            </span>
+          </template>
+        </n-tab>
+      </n-tabs>
 
       <!-- Pin toggle -->
-      <button
-        class="ribbon-pin"
-        :class="{ pinned: layoutStore.ribbonPinned }"
-        :title="layoutStore.ribbonPinned ? 'Unpin ribbon' : 'Pin ribbon'"
-        @click="layoutStore.ribbonPinned = !layoutStore.ribbonPinned"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path v-if="layoutStore.ribbonPinned" d="M15 3h6v6 M9 21H3v-6 M21 3l-7 7 M3 21l7-7" />
-          <path v-else d="M4 14h6v6 M20 10h-6V4 M14 10l7-7 M3 21l7-7" />
-        </svg>
-      </button>
+      <div class="ribbon-actions">
+        <button
+          class="ribbon-pin"
+          :class="{ pinned: layoutStore.ribbonPinned }"
+          :title="layoutStore.ribbonPinned ? 'Unpin ribbon' : 'Pin ribbon'"
+          @click="layoutStore.ribbonPinned = !layoutStore.ribbonPinned"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path v-if="layoutStore.ribbonPinned" d="M15 3h6v6 M9 21H3v-6 M21 3l-7 7 M3 21l7-7" />
+            <path v-else d="M4 14h6v6 M20 10h-6V4 M14 10l7-7 M3 21l7-7" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Ribbon content row (collapsible via max-height) -->
-    <div
-      class="ribbon-content"
-      :class="{ collapsed: !showRibbon }"
-    >
+    <div class="ribbon-content" :class="{ collapsed: !showRibbon }">
       <div class="ribbon-content-inner">
         <component :is="tabComponent" />
       </div>
@@ -46,28 +55,38 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue';
+import { NTabs, NTab } from 'naive-ui';
 import { useLayoutStore } from '../../store/layoutStore';
 import { usePlotStore } from '../../store/plotStore';
 import HomeTab from '../ribbon/HomeTab.vue';
+import PlotsToolbar from '../ribbon/PlotsToolbar.vue';
 import ViewTab from '../ribbon/ViewTab.vue';
+import LiveEditorTab from '../ribbon/LiveEditorTab.vue';
 
 const layoutStore = useLayoutStore();
 const plotStore = usePlotStore();
 
 const TABS = ['HOME', 'PLOTS', 'APPS', 'LIVE EDITOR', 'INSERT', 'VIEW'] as const;
-type TabName = typeof TABS[number];
+type TabName = (typeof TABS)[number];
+const emit = defineEmits(['tab-change']);
 
 const activeTab = ref<TabName>('HOME');
 
 // Ribbon is visible when pinned, or when explicitly toggled visible
 const showRibbon = computed(() => layoutStore.ribbonVisible || layoutStore.ribbonPinned);
 
+const handleTabChange = (value: string) => {
+  activeTab.value = value as TabName;
+  layoutStore.ribbonVisible = true;
+  emit('tab-change', activeTab.value);
+};
+
 // Map tabs to components
 const tabComponents: Record<TabName, Component> = {
   HOME: HomeTab,
-  PLOTS: { template: '<div class="ribbon-stub">PLOTS tab content</div>' },
+  PLOTS: PlotsToolbar,
   APPS: { template: '<div class="ribbon-stub">APPS tab content</div>' },
-  'LIVE EDITOR': { template: '<div class="ribbon-stub">LIVE EDITOR tab content</div>' },
+  'LIVE EDITOR': LiveEditorTab,
   INSERT: { template: '<div class="ribbon-stub">INSERT tab content</div>' },
   VIEW: ViewTab,
 };
@@ -94,66 +113,76 @@ onUnmounted(() => {
 <style scoped>
 .ribbon-bar {
   flex-shrink: 0;
-  background: var(--jl-panel-bg);
+  background: var(--jl-panel-bg-alt);
   border-bottom: 1px solid var(--jl-border);
-}
-
-/* ─── Tab bar ────────────────────────────────────────────────────────────── */
-.ribbon-tabs {
   display: flex;
-  align-items: flex-end;
-  height: 28px;
-  background: var(--jl-panel-bg);
-  border-bottom: 1px solid var(--jl-border);
-  padding: 0 4px;
+  flex-direction: column;
 }
 
-.ribbon-tab {
-  position: relative;
-  height: 100%;
-  padding: 0 14px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-top: 2px solid transparent;
-  cursor: pointer;
-  color: var(--jl-text-muted);
-  font-size: 11.5px;
-  font-weight: 400;
-  font-family: var(--jl-font-ui);
-  letter-spacing: 0.04em;
-  transition: all 0.1s;
-}
-
-.ribbon-tab-badge {
-  position: absolute;
-  top: 4px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+/* ─── Tab bar container ─────────────────────────────────────────────────── */
+.ribbon-tabs-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--jl-accent-green);
-  color: white;
-  font-size: 9px;
-  font-weight: 600;
-  border-radius: 8px;
-  line-height: 1;
-}
-.ribbon-tab:hover {
-  color: var(--jl-text-secondary);
-}
-.ribbon-tab.active {
-  color: var(--jl-text-primary);
-  font-weight: 600;
-  background: var(--jl-panel-bg-alt);
-  border-bottom-color: var(--jl-accent-green);
+  height: 32px;
+  background: var(--jl-matlab-blue);
+  padding: 0 4px;
+  position: relative;
+  z-index: 10;
 }
 
-.ribbon-tabs-spacer {
+.ribbon-n-tabs {
   flex: 1;
+}
+
+/* ─── Naive UI Overrides ─────────────────────────────────────────────────── */
+:deep(.n-tabs-tab-wrapper) {
+  height: 32px;
+}
+
+:deep(.n-tabs-tab) {
+  padding: 0 16px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.7) !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+:deep(.n-tabs-tab:hover) {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: var(--jl-matlab-blue-dark) !important;
+}
+
+:deep(.n-tabs-tab--active) {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  background: var(--jl-matlab-blue-dark) !important;
+  border-bottom: none !important;
+}
+
+:deep(.n-tabs-bar) {
+  background-color: var(--jl-accent-blue) !important;
+  height: 2px !important;
+  bottom: 0 !important;
+}
+
+:deep(.n-tabs-nav) {
+  border-bottom: none !important;
+}
+
+:deep(.n-tabs-pad) {
+  border-bottom: none !important;
+}
+
+/* ─── Ribbon Actions ─────────────────────────────────────────────────────── */
+.ribbon-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
 }
 
 .ribbon-pin {
@@ -162,35 +191,55 @@ onUnmounted(() => {
   justify-content: center;
   width: 24px;
   height: 24px;
-  margin-bottom: 2px;
   background: none;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
-  color: var(--jl-text-muted);
-  transition: all 0.12s;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.15s ease;
 }
+
 .ribbon-pin:hover {
-  color: var(--jl-text-secondary);
-  border-color: var(--jl-border-light);
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 1);
 }
+
 .ribbon-pin.pinned {
-  color: var(--jl-accent-green);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.ribbon-tab-badge {
+  margin-left: 6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--jl-accent-green);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  border-radius: 8px;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 /* ─── Ribbon content ─────────────────────────────────────────────────────── */
 .ribbon-content {
-  max-height: 68px;
+  max-height: 94px;
   overflow: hidden;
   background: var(--jl-panel-bg-alt);
-  border-bottom: 1px solid var(--jl-bg);
-  transition: max-height 0.18s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid var(--jl-border);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
+
 .ribbon-content.collapsed {
   max-height: 0;
   border-bottom: none;
-  box-shadow: none;
+  padding-bottom: 0;
 }
 
 .ribbon-content-inner {
@@ -199,18 +248,21 @@ onUnmounted(() => {
   align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
-  min-height: 68px;
-  padding: 0 2px;
+  min-height: 84px;
+  padding: 4px;
 }
 
 /* Scrollbar for ribbon overflow */
 .ribbon-content-inner::-webkit-scrollbar {
   height: 4px;
-  background: var(--jl-bg);
+  background: transparent;
 }
 .ribbon-content-inner::-webkit-scrollbar-thumb {
-  background: #333;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
+}
+.ribbon-content-inner::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Stub placeholder */
@@ -219,10 +271,11 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 68px;
+  min-height: 84px;
   color: var(--jl-text-muted);
   font-family: var(--jl-font-ui);
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  font-style: italic;
 }
 </style>

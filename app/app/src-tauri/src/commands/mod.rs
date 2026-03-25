@@ -11,3 +11,5 @@ pub mod process;
 pub mod startup;
 pub mod syntax;
 pub mod notebook;
+pub mod ai;
+pub mod pluto;

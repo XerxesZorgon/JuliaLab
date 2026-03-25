@@ -119,7 +119,7 @@ use crate::commands::{
         lsp_get_document_symbols, lsp_get_references,
         lsp_get_signature_help, lsp_hover, lsp_initialize, lsp_is_running, lsp_notify_did_change,
         lsp_notify_did_close, lsp_notify_did_open, lsp_notify_did_save,
-        lsp_shutdown, lsp_restart,
+        lsp_shutdown, lsp_restart, lsp_start_if_needed,
     },
     syntax::{
         parse_julia_syntax, get_syntax_diagnostics, clear_syntax_cache, is_syntax_service_available,
@@ -131,11 +131,13 @@ use crate::commands::{
         create_new_julia_project,
         // Julia operations
         execute_julia_code,
+        execute_code,
         execute_notebook_cell,
         execute_notebook_cells_batch,
         execute_julia_file,
         refresh_workspace_variables,
         get_variable_value,
+        get_variable_chunk,
         get_default_julia_environment_path,
         get_depot_size_info,
         get_julia_version,
@@ -156,16 +158,16 @@ use crate::commands::{
     process::{get_session_status, init_terminal_session, is_backend_ready, restart_julia, get_backend_busy_status},
     plot::{
         clear_all_plots, delete_plot, emit_plot_navigator_update, export_plot, get_all_plots,
-        get_plot, serve_plot_image, test_plot_system,
+        get_plot, new_figure, plot_export, serve_plot_image, test_plot_system,
     },
     utils::{get_system_info, open_url, set_last_opened_folder, is_subscription_enabled, is_ai_enabled, get_app_settings, set_app_settings, get_available_fonts},
-    file_server::{start_file_server, stop_file_server, get_file_server_url, is_file_server_running},
+    pluto::launch_pluto,    file_server::{start_file_server, stop_file_server, get_file_server_url, is_file_server_running},
 };
 // Terminal manager removed - using single persistent Julia session instead
 // PlotManager removed - now using orchestrator's plot server
 
 // --- Main Application Entry Point ---
-pub fn run() {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize configuration early to ensure .env file is loaded
     internals::config::init_config();
     
@@ -210,6 +212,10 @@ pub fn run() {
             crate::commands::generic::frontend_ready_handshake,
             crate::commands::generic::get_orchestrator_startup_phase,
             crate::commands::generic::project_changed,
+            // AI / Gemini commands
+            crate::commands::ai::check_gemini_cli,
+            crate::commands::ai::call_gemini_stream,
+            crate::commands::ai::kill_gemini_stream,
             // Utility commands (keeping)
             open_url,
             // query_setup_status,
@@ -241,11 +247,14 @@ pub fn run() {
             generate_uuid,
             // Julia operations
             execute_julia_code,
+            crate::commands::generic::format_code,
+            execute_code,
             execute_notebook_cell,
         execute_notebook_cells_batch,
             execute_julia_file,
             refresh_workspace_variables,
             get_variable_value,
+            get_variable_chunk,
             get_session_status,
             is_backend_ready,
             get_backend_busy_status,
@@ -274,6 +283,8 @@ pub fn run() {
             delete_plot,
             clear_all_plots,
             export_plot,
+            plot_export,
+            new_figure,
             test_plot_system,
             emit_plot_navigator_update,
             serve_plot_image,
@@ -293,6 +304,7 @@ pub fn run() {
             lsp_initialize,
             lsp_shutdown,
             lsp_restart,
+            lsp_start_if_needed,
             // Syntax commands
             parse_julia_syntax,
             get_syntax_diagnostics,
@@ -308,6 +320,8 @@ pub fn run() {
             crate::commands::tab::save_tab_to_file,
             crate::commands::tab::get_dirty_tabs,
             // FileServer commands
+            // Pluto commands
+            launch_pluto,
             start_file_server,
             stop_file_server,
             get_file_server_url,
@@ -337,6 +351,9 @@ pub fn run() {
             // Store emitter
             let emitter = Arc::new(crate::tauri_emitter::TauriEventEmitter::new(app_handle.clone()));
             app.manage(emitter.clone());
+
+            // Gemini streaming child state
+            app.manage(crate::commands::ai::GeminiChildState::new());
 
             // No explicit window listener needed; the LSP bridge emits orchestrator:startup-ready directly
             
@@ -404,4 +421,6 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+    
+    Ok(())
 }
