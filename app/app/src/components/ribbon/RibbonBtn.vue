@@ -1,32 +1,31 @@
 <template>
   <button
     class="ribbon-btn"
-    :class="{
-      large,
-      active,
-      disabled,
-    }"
+    :class="{ large, active, disabled }"
     :disabled="disabled"
     @click="!disabled && $emit('click')"
   >
-    <svg
-      :width="large ? 22 : 14"
-      :height="large ? 22 : 14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.8"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      class="ribbon-btn-icon"
-    >
-      <template v-if="Array.isArray(iconPaths)">
-        <path v-for="(d, i) in iconPaths" :key="i" :d="d" />
-      </template>
-      <template v-else>
-        <path :d="iconPaths" />
-      </template>
-    </svg>
+    <!-- Colored icon slot — overrides default SVG when provided -->
+    <slot name="icon">
+      <svg
+        :width="large ? 28 : 16"
+        :height="large ? 28 : 16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="ribbon-btn-icon"
+      >
+        <template v-if="Array.isArray(iconPaths)">
+          <path v-for="(d, i) in iconPaths" :key="i" :d="d" />
+        </template>
+        <template v-else>
+          <path :d="iconPaths" />
+        </template>
+      </svg>
+    </slot>
     <span class="ribbon-btn-label">{{ label }}</span>
   </button>
 </template>
@@ -70,14 +69,15 @@ const iconPaths = computed(() => ribbonIcons[props.icon] || '');
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 8px;
-  min-width: 52px;
+  gap: 3px;
+  padding: 4px 8px;
+  min-width: 56px;
 }
 
 /* Hover */
 .ribbon-btn:not(.disabled):hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 90, 156, 0.10);
+  border-color: rgba(0, 90, 156, 0.25);
   color: var(--jl-text-primary);
 }
 

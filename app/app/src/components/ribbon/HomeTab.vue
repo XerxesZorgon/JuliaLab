@@ -2,12 +2,22 @@
   <div class="ribbon-tab-content">
     <!-- FILE group -->
     <RibbonGroup title="File">
-      <RibbonBtn icon="newFile"   label="New Script"      :large="true" @click="handleNew" />
+      <RibbonBtn icon="newFile" label="New Script" :large="true" @click="handleNew">
+        <template #icon><span class="ci" v-html="coloredIcons.newFile" /></template>
+      </RibbonBtn>
       <div class="ribbon-col">
-        <RibbonBtn icon="newDropdown" label="New ▾"     @click="handleNewDropdown" />
-        <RibbonBtn icon="open"        label="Open"       @click="handleOpen" />
-        <RibbonBtn icon="goToFile"    label="Go to File" @click="handleGoToFile" />
-        <RibbonBtn icon="findFiles"   label="Find Files" @click="handleFindFiles" />
+        <RibbonBtn icon="newDropdown" label="New ▾" @click="handleNewDropdown">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.newDropdown" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="open" label="Open" @click="handleOpen">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.open" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="goToFile" label="Go to File" @click="handleGoToFile">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.goToFile" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="findFiles" label="Find Files" @click="handleFindFiles">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.findFiles" /></template>
+        </RibbonBtn>
       </div>
     </RibbonGroup>
 
@@ -15,10 +25,16 @@
 
     <!-- CODE group -->
     <RibbonGroup title="Code">
-      <RibbonBtn icon="section" label="Run Section" :large="true" @click="runCell" />
+      <RibbonBtn icon="section" label="Run Section" :large="true" @click="runCell">
+        <template #icon><span class="ci" v-html="coloredIcons.section" /></template>
+      </RibbonBtn>
       <div class="ribbon-col">
-        <RibbonBtn icon="format" label="Format Code" @click="formatFile" />
-        <RibbonBtn icon="run" label="Run File" @click="runFile" />
+        <RibbonBtn icon="format" label="Format Code" @click="formatFile">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.format" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="run" label="Run File" @click="runFile">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.run" /></template>
+        </RibbonBtn>
       </div>
     </RibbonGroup>
 
@@ -26,17 +42,25 @@
 
     <!-- MODELING group -->
     <RibbonGroup title="Modeling">
-      <RibbonBtn icon="dyad" label="Open in Dyad" :large="true" @click="handleOpenDyad" />
+      <RibbonBtn icon="dyad" label="Open in Dyad" :large="true" @click="handleOpenDyad">
+        <template #icon><span class="ci" v-html="coloredIcons.dyad" /></template>
+      </RibbonBtn>
     </RibbonGroup>
 
     <RibbonDivider />
 
     <!-- VARIABLE group -->
     <RibbonGroup title="Variables">
-      <RibbonBtn icon="trash" label="Clear Workspace" :large="true" @click="clearWorkspace" />
+      <RibbonBtn icon="trash" label="Clear Workspace" :large="true" @click="clearWorkspace">
+        <template #icon><span class="ci" v-html="coloredIcons.trash" /></template>
+      </RibbonBtn>
       <div class="ribbon-col">
-        <RibbonBtn icon="workspace" label="Workspace" />
-        <RibbonBtn icon="pkg" label="Packages" @click="handlePackages" />
+        <RibbonBtn icon="workspace" label="Workspace">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.workspace" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="pkg" label="Packages" @click="handlePackages">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.pkg" /></template>
+        </RibbonBtn>
       </div>
     </RibbonGroup>
 
@@ -45,12 +69,20 @@
     <!-- NAVIGATE group -->
     <RibbonGroup title="Navigate">
       <div class="ribbon-col">
-        <RibbonBtn icon="find" label="Find" />
-        <RibbonBtn icon="find" label="Find Files" />
+        <RibbonBtn icon="find" label="Find">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.find" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="findFiles" label="Find Files">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.findFiles" /></template>
+        </RibbonBtn>
       </div>
       <div class="ribbon-col">
-        <RibbonBtn icon="undo" label="Undo" />
-        <RibbonBtn icon="redo" label="Redo" />
+        <RibbonBtn icon="undo" label="Undo">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.undo" /></template>
+        </RibbonBtn>
+        <RibbonBtn icon="redo" label="Redo">
+          <template #icon><span class="ci-sm" v-html="coloredIcons.redo" /></template>
+        </RibbonBtn>
       </div>
     </RibbonGroup>
   </div>
@@ -67,6 +99,7 @@ import { useJuliaActions } from '../../composables/useJuliaActions';
 import RibbonGroup from './RibbonGroup.vue';
 import RibbonBtn from './RibbonBtn.vue';
 import RibbonDivider from './RibbonDivider.vue';
+import { coloredIcons } from './ribbon-icons-colored';
 
 const appStore = useAppStore();
 const { runFile, runCell, saveFile, formatFile, clearWorkspace } = useJuliaActions();
@@ -138,4 +171,23 @@ const handleOpenDyad = async () => {
   flex-direction: column;
   gap: 2px;
 }
+
+.ci {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  line-height: 0;
+}
+.ci-sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+.ci :deep(svg) { width: 28px; height: 28px; }
+.ci-sm :deep(svg) { width: 16px; height: 16px; }
 </style>
