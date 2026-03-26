@@ -47,6 +47,9 @@
     <!-- Ribbon content row (collapsible via max-height) -->
     <div class="ribbon-content" :class="{ collapsed: !showRibbon }">
       <div class="ribbon-content-inner">
+        <div class="ribbon-logo">
+          <img src="/JuliaLab_home.png" alt="JuliaLab" class="ribbon-logo-img" />
+        </div>
         <component :is="tabComponent" />
       </div>
     </div>
@@ -62,6 +65,7 @@ import HomeTab from '../ribbon/HomeTab.vue';
 import PlotsToolbar from '../ribbon/PlotsToolbar.vue';
 import ViewTab from '../ribbon/ViewTab.vue';
 import LiveEditorTab from '../ribbon/LiveEditorTab.vue';
+import AppsTab from '../ribbon/AppsTab.vue';
 
 const layoutStore = useLayoutStore();
 const plotStore = usePlotStore();
@@ -85,7 +89,7 @@ const handleTabChange = (value: string) => {
 const tabComponents: Record<TabName, Component> = {
   HOME: HomeTab,
   PLOTS: PlotsToolbar,
-  APPS: { render() { return null; } },
+  APPS: AppsTab,
   'LIVE EDITOR': LiveEditorTab,
   INSERT: { render() { return null; } },
   VIEW: ViewTab,
@@ -157,9 +161,9 @@ onUnmounted(() => {
 }
 
 :deep(.n-tabs-tab--active) {
-  color: #ffffff !important;
+  color: var(--jl-text-primary) !important;
   font-weight: 700 !important;
-  background: var(--jl-matlab-blue-dark) !important;
+  background: var(--jl-panel-bg-alt) !important;
   border-bottom: none !important;
 }
 
@@ -228,7 +232,7 @@ onUnmounted(() => {
 
 /* ─── Ribbon content ─────────────────────────────────────────────────────── */
 .ribbon-content {
-  max-height: 94px;
+  max-height: 152px;
   overflow: hidden;
   background: var(--jl-panel-bg-alt);
   border-bottom: 1px solid var(--jl-border);
@@ -245,11 +249,12 @@ onUnmounted(() => {
 .ribbon-content-inner {
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: center;
   overflow-x: auto;
   overflow-y: hidden;
-  min-height: 84px;
-  padding: 4px;
+  min-height: 148px;
+  max-height: 148px;
+  padding: 2px 4px;
 }
 
 /* Scrollbar for ribbon overflow */
@@ -263,6 +268,38 @@ onUnmounted(() => {
 }
 .ribbon-content-inner::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.ribbon-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 108px;
+  min-width: 108px;
+  height: 148px;
+  flex-shrink: 0;
+  padding: 0px 6px 2px;
+  border-right: 1px solid var(--jl-border);
+  margin-right: 4px;
+  box-sizing: border-box;
+}
+.ribbon-logo-img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  border-radius: 8px;
+  flex-shrink: 0;
+  margin-bottom: 15px;
+}
+.ribbon-logo-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jl-text-secondary);
+  font-family: var(--jl-font-ui);
+  margin-top: 1px;
 }
 
 /* Stub placeholder */

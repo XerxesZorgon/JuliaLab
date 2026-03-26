@@ -2,9 +2,42 @@
   <div class="ribbon-tab-content">
     <!-- FILE group -->
     <RibbonGroup title="File">
-      <RibbonBtn icon="newFile" label="New" :large="true" @click="handleNew" />
-      <RibbonBtn icon="open" label="Open" :large="true" @click="handleOpen" />
-      <RibbonBtn icon="save" label="Save" :large="true" @click="saveFile" />
+      <RibbonBtn icon="newFile"   label="New Script"      :large="true" @click="handleNew" />
+      <div class="ribbon-col">
+        <RibbonBtn icon="newDropdown" label="New ▾"     @click="handleNewDropdown" />
+        <RibbonBtn icon="open"        label="Open"       @click="handleOpen" />
+        <RibbonBtn icon="goToFile"    label="Go to File" @click="handleGoToFile" />
+        <RibbonBtn icon="findFiles"   label="Find Files" @click="handleFindFiles" />
+      </div>
+    </RibbonGroup>
+
+    <RibbonDivider />
+
+    <!-- CODE group -->
+    <RibbonGroup title="Code">
+      <RibbonBtn icon="section" label="Run Section" :large="true" @click="runCell" />
+      <div class="ribbon-col">
+        <RibbonBtn icon="format" label="Format Code" @click="formatFile" />
+        <RibbonBtn icon="run" label="Run File" @click="runFile" />
+      </div>
+    </RibbonGroup>
+
+    <RibbonDivider />
+
+    <!-- MODELING group -->
+    <RibbonGroup title="Modeling">
+      <RibbonBtn icon="dyad" label="Open in Dyad" :large="true" @click="handleOpenDyad" />
+    </RibbonGroup>
+
+    <RibbonDivider />
+
+    <!-- VARIABLE group -->
+    <RibbonGroup title="Variables">
+      <RibbonBtn icon="trash" label="Clear Workspace" :large="true" @click="clearWorkspace" />
+      <div class="ribbon-col">
+        <RibbonBtn icon="workspace" label="Workspace" />
+        <RibbonBtn icon="pkg" label="Packages" @click="handlePackages" />
+      </div>
     </RibbonGroup>
 
     <RibbonDivider />
@@ -20,48 +53,13 @@
         <RibbonBtn icon="redo" label="Redo" />
       </div>
     </RibbonGroup>
-
-    <RibbonDivider />
-
-    <!-- CODE group -->
-    <RibbonGroup title="Code">
-      <div class="ribbon-col">
-        <RibbonBtn icon="format" label="Format Code" @click="formatFile" />
-        <RibbonBtn icon="section" label="Run Section" />
-      </div>
-    </RibbonGroup>
-
-    <RibbonDivider />
-
-    <!-- RUN group -->
-    <RibbonGroup title="Run">
-      <RibbonBtn
-        icon="run"
-        label="Run"
-        :large="true"
-        :active="true"
-        :disabled="!appStore.projectPath"
-        @click="runFile"
-      />
-      <RibbonBtn icon="stop" label="Stop" :large="true" :disabled="true" />
-    </RibbonGroup>
-
-    <RibbonDivider />
-
-    <!-- ENVIRONMENT group -->
-    <RibbonGroup title="Environment">
-      <div class="ribbon-col">
-        <RibbonBtn icon="pkg" label="Packages" @click="handlePackages" />
-        <RibbonBtn icon="workspace" label="Workspace" />
-      </div>
-      <RibbonBtn icon="revise" label="Revise" :large="true" :active="reviseActive" />
-    </RibbonGroup>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import { listen } from '@tauri-apps/api/event';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 import { useAppStore } from '../../store/appStore';
@@ -71,7 +69,7 @@ import RibbonBtn from './RibbonBtn.vue';
 import RibbonDivider from './RibbonDivider.vue';
 
 const appStore = useAppStore();
-const { runFile, saveFile, formatFile } = useJuliaActions();
+const { runFile, runCell, saveFile, formatFile, clearWorkspace } = useJuliaActions();
 
 // Revise status (event-driven, same pattern as StatusBar)
 const reviseActive = ref(false);
@@ -105,8 +103,24 @@ const handleOpen = async () => {
   }
 };
 
+const handleNewDropdown = () => {
+  window.dispatchEvent(new CustomEvent('ribbon:new-dropdown'));
+};
+
+const handleGoToFile = () => {
+  window.dispatchEvent(new CustomEvent('ribbon:go-to-file'));
+};
+
+const handleFindFiles = () => {
+  window.dispatchEvent(new CustomEvent('ribbon:find-files'));
+};
+
 const handlePackages = () => {
   window.dispatchEvent(new CustomEvent('ribbon:navigate', { detail: 'PackageManagement' }));
+};
+
+const handleOpenDyad = async () => {
+  await openExternal('https://juliahub.com/products/dyad/');
 };
 </script>
 

@@ -13,11 +13,14 @@
     "windows": [
       {
         "label": "main",
-        "title": "JuliaLab",
+        "title": "JuliaLab 2026",
         "width": 1024,
         "height": 768,
         "visible": true,
-        "center": true
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "theme": "Dark",
+        "dragDropEnabled": true
       }
     ],
     "security": {
@@ -34,7 +37,12 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": false,
-    "targets": ["nsis", "app", "deb", "rpm"],
+    "targets": [
+      "nsis",
+      "app",
+      "deb",
+      "rpm"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -46,7 +54,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../demo": "demo"
+      "../../demo": "demo",
+      "../internals/scripts/core/julialab.dll": "julialab.dll"
     },
     "windows": {
       "nsis": {
@@ -78,7 +87,10 @@
   "plugins": {
     "http": {
       "active": true,
-      "scope": []
+      "scope": [
+        "http://127.0.0.1:*",
+        "http://localhost:*"
+      ]
     }
   }
 }
