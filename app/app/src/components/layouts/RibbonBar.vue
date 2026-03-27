@@ -66,11 +66,12 @@ import PlotsToolbar from '../ribbon/PlotsToolbar.vue';
 import ViewTab from '../ribbon/ViewTab.vue';
 import LiveEditorTab from '../ribbon/LiveEditorTab.vue';
 import AppsTab from '../ribbon/AppsTab.vue';
+import FigureTab from '../ribbon/FigureTab.vue';
 
 const layoutStore = useLayoutStore();
 const plotStore = usePlotStore();
 
-const TABS = ['HOME', 'PLOTS', 'APPS', 'LIVE EDITOR', 'INSERT', 'VIEW'] as const;
+const TABS = ['HOME', 'PLOTS', 'FIGURE', 'APPS', 'LIVE EDITOR', 'INSERT', 'VIEW'] as const;
 type TabName = (typeof TABS)[number];
 const emit = defineEmits(['tab-change']);
 
@@ -89,6 +90,7 @@ const handleTabChange = (value: string) => {
 const tabComponents: Record<TabName, Component> = {
   HOME: HomeTab,
   PLOTS: PlotsToolbar,
+  FIGURE: FigureTab,
   APPS: AppsTab,
   'LIVE EDITOR': LiveEditorTab,
   INSERT: { render() { return null; } },
