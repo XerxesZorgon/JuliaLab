@@ -310,4 +310,110 @@ export const coloredIcons: Record<string, string> = {
     <path d="M19.5 19.2c0-0.8 0.7-1.5 1.5-1.5s1.5 0.7 1.5 1.5c0 0.6-0.4 1.1-0.9 1.3L21 21v0.8" stroke="white" stroke-width="1.4" stroke-linecap="round" fill="none"/>
     <circle cx="21" cy="23.5" r="0.7" fill="white"/>
   </svg>`,
+
+  saveAs: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="3" width="18" height="18" rx="2" fill="#4a90d9" stroke="#2e70b8" stroke-width="1"/>
+    <rect x="7" y="3" width="8" height="7" rx="1" fill="#7db8f0"/>
+    <rect x="9" y="3" width="2" height="5" fill="#5aa0e0"/>
+    <rect x="6" y="13" width="12" height="7" rx="1" fill="#2e70b8"/>
+    <rect x="9" y="15" width="6" height="3" rx="0.5" fill="#7db8f0"/>
+    <path d="M18 18l6 6" stroke="#389826" stroke-width="2" stroke-linecap="round"/>
+    <polyline points="20,24 24,24 24,20" fill="none" stroke="#389826" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  print: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="7" y="3" width="14" height="8" rx="1" fill="#ffffff" stroke="#b0b8c8" stroke-width="1"/>
+    <rect x="4" y="10" width="20" height="11" rx="2" fill="#e0e0e0" stroke="#aaa" stroke-width="1"/>
+    <rect x="7" y="17" width="14" height="8" rx="1" fill="#ffffff" stroke="#b0b8c8" stroke-width="1"/>
+    <circle cx="20" cy="15" r="1.5" fill="#389826"/>
+    <line x1="9" y1="20" x2="19" y2="20" stroke="#ccc" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="9" y1="22" x2="15" y2="22" stroke="#ccc" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`,
+
+  copyFigure: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="9" y="6" width="14" height="16" rx="1.5" fill="#ffffff" stroke="#b0b8c8" stroke-width="1"/>
+    <rect x="9" y="6" width="14" height="4" rx="1.5" fill="#4a90d9" stroke="#2e70b8" stroke-width="1"/>
+    <rect x="5" y="10" width="14" height="16" rx="1.5" fill="#f0f4ff" stroke="#4a90d9" stroke-width="1"/>
+    <rect x="5" y="10" width="14" height="4" rx="1.5" fill="#4a90d9" stroke="#2e70b8" stroke-width="1"/>
+    <polyline points="8,19 11,16 14,18 17,14" fill="none" stroke="#389826" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  showCode: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <polyline points="9,8 4,14 9,20" fill="none" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="19,8 24,14 19,20" fill="none" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="16" y1="6" x2="12" y2="22" stroke="#389826" stroke-width="2" stroke-linecap="round"/>
+  </svg>`,
+
+  figTitle: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="6" y1="8" x2="22" y2="8" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+    <line x1="14" y1="8" x2="14" y2="20" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+    <line x1="4" y1="24" x2="24" y2="24" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+  </svg>`,
+
+  figSubtitle: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="8" y1="10" x2="20" y2="10" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="14" y1="10" x2="14" y2="19" stroke="#555" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="4" y1="24" x2="24" y2="24" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="3,2"/>
+  </svg>`,
+
+  xLabel: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="4" y1="22" x2="4" y2="6" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="4" y1="22" x2="24" y2="22" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="6,18 10,12 14,15 18,9 22,12" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="9" y1="26" x2="15" y2="26" stroke="#4a90d9" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="9" y1="24" x2="15" y2="28" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="15" y1="24" x2="9" y2="28" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+
+  yLabel: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="6" y1="22" x2="6" y2="6" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="6" y1="22" x2="24" y2="22" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <polyline points="8,18 12,12 16,15 20,9 23,12" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="2" y1="11" x2="5" y2="16" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="5" y1="16" x2="2" y2="21" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="8" y1="11" x2="5" y2="16" stroke="#4a90d9" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+
+  legend: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="6" width="20" height="16" rx="1.5" fill="#ffffff" stroke="#b0b8c8" stroke-width="1"/>
+    <line x1="7" y1="11" x2="12" y2="11" stroke="#4a90d9" stroke-width="2" stroke-linecap="round"/>
+    <line x1="7" y1="16" x2="12" y2="16" stroke="#cb3c33" stroke-width="2" stroke-linecap="round"/>
+    <line x1="14" y1="11" x2="22" y2="11" stroke="#888" stroke-width="1.2" stroke-linecap="round"/>
+    <line x1="14" y1="16" x2="22" y2="16" stroke="#888" stroke-width="1.2" stroke-linecap="round"/>
+  </svg>`,
+
+  colorbar: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="cbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#b30000"/>
+      <stop offset="50%" stop-color="#fc8d59"/>
+      <stop offset="100%" stop-color="#253494"/>
+    </linearGradient></defs>
+    <rect x="11" y="4" width="6" height="20" rx="1" fill="url(#cbg)" stroke="#aaa" stroke-width="0.8"/>
+    <line x1="17" y1="6" x2="20" y2="6" stroke="#555" stroke-width="1" stroke-linecap="round"/>
+    <line x1="17" y1="14" x2="20" y2="14" stroke="#555" stroke-width="1" stroke-linecap="round"/>
+    <line x1="17" y1="22" x2="20" y2="22" stroke="#555" stroke-width="1" stroke-linecap="round"/>
+  </svg>`,
+
+  gridIcon: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="20" height="20" rx="1" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <line x1="4" y1="11" x2="24" y2="11" stroke="#4a90d9" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="4" y1="17" x2="24" y2="17" stroke="#4a90d9" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="11" y1="4" x2="11" y2="24" stroke="#4a90d9" stroke-width="1" stroke-dasharray="2,2"/>
+    <line x1="17" y1="4" x2="17" y2="24" stroke="#4a90d9" stroke-width="1" stroke-dasharray="2,2"/>
+    <polyline points="6,20 10,14 14,16 18,10 22,13" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  xGrid: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="20" height="20" rx="1" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <line x1="11" y1="4" x2="11" y2="24" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="2,2"/>
+    <line x1="17" y1="4" x2="17" y2="24" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="2,2"/>
+    <polyline points="6,20 10,14 14,16 18,10 22,13" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+
+  yGrid: `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="4" width="20" height="20" rx="1" fill="#f8f8f8" stroke="#ccc" stroke-width="1"/>
+    <line x1="4" y1="11" x2="24" y2="11" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="2,2"/>
+    <line x1="4" y1="17" x2="24" y2="17" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="2,2"/>
+    <polyline points="6,20 10,14 14,16 18,10 22,13" fill="none" stroke="#555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
 };
