@@ -1,5 +1,5 @@
 <template>
-  <div style="height: 100%; background-color: #1e1e1e; display: flex">
+  <div style="height: 100%; background-color: var(--jl-editor-bg); display: flex">
     <!-- Main Editor Area -->
     <div style="width: 100%">
       <n-tabs
@@ -299,6 +299,10 @@ const pendingNavigationRequest = ref<{ filePath: string; range: IRange } | null>
 const showReferencesPanel = ref(false);
 const referencesRequest = ref<{ uri: string; line: number; character: number } | null>(null);
 
+// Flag to prevent concurrent calls to loadTabsFromService
+// Must be declared BEFORE the immediate watcher below to avoid temporal dead zone
+let isLoadingTabs = false;
+
 // Watch for route changes to restore tabs when returning to Home
 watch(
   () => route.name,
@@ -372,12 +376,19 @@ onMounted(async () => {
     }
   };
 
+  async function handleRibbonOpenFile(e: Event) {
+    const path = (e as CustomEvent<string>).detail;
+    if (path) await openFile(path);
+  }
+
   window.addEventListener('file-deleted', handleFileDeleted as EventListener);
+  window.addEventListener('ribbon:open-file', handleRibbonOpenFile as EventListener);
 
   // Clean up all listeners on unmount
   onUnmounted(() => {
     unlistenExecutionComplete();
     window.removeEventListener('file-deleted', handleFileDeleted as EventListener);
+    window.removeEventListener('ribbon:open-file', handleRibbonOpenFile as EventListener);
   });
 
   // Let DiagnosticsPanel know initial active file
@@ -573,9 +584,6 @@ async function loadFileContent(filePath: string): Promise<void> {
     openFiles.value[fileIndex].loading = false;
   }
 }
-
-// Flag to prevent concurrent calls to loadTabsFromService
-let isLoadingTabs = false;
 
 // Function to load tabs from the service
 async function loadTabsFromService(): Promise<void> {
