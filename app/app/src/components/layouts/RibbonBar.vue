@@ -71,7 +71,7 @@ import FigureTab from '../ribbon/FigureTab.vue';
 const layoutStore = useLayoutStore();
 const plotStore = usePlotStore();
 
-const TABS = ['HOME', 'PLOTS', 'FIGURE', 'APPS', 'LIVE EDITOR', 'INSERT', 'VIEW'] as const;
+const TABS = ['HOME', 'PLOTS', 'FIGURE', 'APPS', 'PLUTO NOTEBOOK', 'VIEW'] as const;
 type TabName = (typeof TABS)[number];
 const emit = defineEmits(['tab-change']);
 
@@ -92,8 +92,7 @@ const tabComponents: Record<TabName, Component> = {
   PLOTS: PlotsToolbar,
   FIGURE: FigureTab,
   APPS: AppsTab,
-  'LIVE EDITOR': LiveEditorTab,
-  INSERT: { render() { return null; } },
+  'PLUTO NOTEBOOK': LiveEditorTab,
   VIEW: ViewTab,
 };
 
