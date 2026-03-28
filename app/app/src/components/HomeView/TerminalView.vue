@@ -54,11 +54,14 @@ export default {
       inputBuffer: '', // Buffer for Julia REPL input
       sessionActive: false,
       isReady: false, // Track if terminal is ready for input
+      startupCleared: false, // Clear terminal after startup noise ends
       isRestarting: false, // Track if Julia restart is in progress
       isExecuting: false, // Track if a command is currently being executed
       pollingInterval: null, // Polling interval for backend readiness
       promptWrittenAfterRestart: false, // Track if prompt was written after restart
+      promptWrittenThisSession: false, // Track if prompt was written for this mounted terminal session
       isInitialMount: true, // Track if this is the initial mount
+      _workspaceRefreshTimer: null, // Debounce timer for workspace refresh after REPL prompt
     };
   },
 
@@ -112,6 +115,17 @@ export default {
     // Set up clear terminal event listener
     window.addEventListener('clear-terminal', this.clearTerminal);
 
+    // Watch for theme changes (data-theme attribute on <html>) and update xterm
+    this._themeObserver = new MutationObserver(() => {
+      if (this.term) {
+        this.term.options.theme = this.getTerminalTheme();
+      }
+    });
+    this._themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
     // Set up Julia restart event listeners
     this.setupRestartEventListeners();
 
@@ -146,8 +160,18 @@ export default {
       this.pollingInterval = null;
     }
   },
+  updated() {
+    // Keep xterm rows in sync after tab/pane layout changes.
+    this.$nextTick(() => {
+      this.handleResize();
+    });
+  },
   beforeUnmount() {
     debug('TerminalView: beforeUnmount');
+    if (this._themeObserver) {
+      this._themeObserver.disconnect();
+      this._themeObserver = null;
+    }
     this.isUnmounting = true;
 
     // Clear polling interval to prevent prompts from appearing after unmount
@@ -155,6 +179,10 @@ export default {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
     }
+
+    // Clear pending workspace refresh timer
+    clearTimeout(this._workspaceRefreshTimer);
+    this._workspaceRefreshTimer = null;
 
     // Save terminal state before unmounting
     this.saveTerminalState();
@@ -168,6 +196,34 @@ export default {
     this.cleanupTerminalResources();
   },
   methods: {
+    clearSavedTerminalState() {
+      // Clear in-memory serialized terminal snapshot used across remounts.
+      this.terminalStore.clearTerminalSerializedState();
+
+      // Clear legacy persisted key (if present) so old sessions are never replayed.
+      try {
+        localStorage.removeItem('julialab-terminal-state');
+      } catch {
+        // Ignore storage errors (e.g. privacy mode/quota)
+      }
+    },
+
+    ensurePromptVisible() {
+      if (!this.term || this.promptWrittenThisSession) {
+        return;
+      }
+
+      this.term.write('\x1b[1;32mjulia> \x1b[0m');
+      this.promptWrittenThisSession = true;
+      this.terminalStore.setHasShownInitialPrompt(true);
+    },
+
+    getTerminalTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      return isDark
+        ? { background: '#1e1e1e', foreground: '#e0e0e0', cursor: '#e0e0e0', selectionBackground: '#264f78' }
+        : { background: '#ffffff', foreground: '#1a1a1a', cursor: '#1a1a1a', selectionBackground: '#b3d0f0' };
+    },
     async initializeJuliaSession() {
       try {
         debug('Initializing Julia session');
@@ -202,12 +258,8 @@ export default {
           convertEol: true,
           fontFamily: terminalFontFamily,
           fontSize: terminalFontSize,
-          theme: {
-            background: '#1e1e1e',
-            foreground: '#ffffff',
-            cursor: '#ffffff',
-            selectionBackground: '#264f78',
-          },
+          allowProposedApi: true, // Enable clipboard API
+          theme: this.getTerminalTheme(),
         });
         this.fitAddon = new FitAddon();
         this.serializeAddon = new SerializeAddon();
@@ -256,8 +308,30 @@ export default {
 
           // Don't write Julia output to terminal during restart (spinner is showing)
           if (this.isRestarting) {
-            console.log('TerminalView: Ignoring Julia output during restart');
             return;
+          }
+
+          // Detect end of startup noise: _start() is always the
+          // last stack frame printed during Julia initialization.
+          // Clear terminal 800ms after seeing it to let any
+          // final output flush before wiping.
+          const payloadStr = Array.isArray(event.payload)
+            ? event.payload.map((p) => p.content || '').join('')
+            : (typeof event.payload === 'string' ? event.payload : '');
+          if (!this.startupCleared && payloadStr.includes('_start()')) {
+            this.startupCleared = true;
+            setTimeout(() => {
+              if (this.term) {
+                this.term.clear();
+                // Small delay after clear to ensure it's visually
+                // complete before writing the prompt
+                setTimeout(() => {
+                  if (this.term && this.isReady) {
+                    this.term.write('\x1b[1;32mjulia> \x1b[0m');
+                  }
+                }, 100);
+              }
+            }, 1500);
           }
 
           if (event.payload && Array.isArray(event.payload)) {
@@ -280,14 +354,19 @@ export default {
                 // Ensure proper line endings but don't filter out newlines
                 cleanContent = cleanContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-                // Check if this is a Julia prompt and add a small delay to ensure previous output is displayed
+                // Check if this is a Julia prompt
                 if (cleanContent.includes('julia>')) {
-                  // Add a small delay before writing the prompt to ensure previous output is fully displayed
-                  setTimeout(() => {
-                    if (this.term) {
-                      this.term.write(cleanContent);
+                  this.term.write(cleanContent);
+                  // Debounced workspace refresh — fire 600ms after the last prompt, so
+                  // variables created directly in the REPL appear in the Workspace panel.
+                  clearTimeout(this._workspaceRefreshTimer);
+                  this._workspaceRefreshTimer = setTimeout(async () => {
+                    try {
+                      await invoke('refresh_workspace_variables');
+                    } catch (_) {
+                      // Julia may not be ready yet — silently ignore
                     }
-                  }, 100);
+                  }, 600);
                 } else {
                   // Write the cleaned content immediately for regular output
                   this.term.write(cleanContent);
@@ -362,6 +441,39 @@ export default {
 
         // Note: Backend busy state is now managed centrally in App.vue
         // No need to duplicate the busy state management here
+
+        // Handle clipboard operations
+        // Enable right-click paste and Ctrl+Shift+V
+        this.term.attachCustomKeyEventHandler((event) => {
+          // Handle Ctrl+Shift+V (paste) - standard terminal shortcut
+          if (event.ctrlKey && event.shiftKey && event.key === 'V' && event.type === 'keydown') {
+            navigator.clipboard.readText().then(text => {
+              this.handlePaste(text);
+            });
+            return false;
+          }
+          // Handle Ctrl+Shift+C (copy) - standard terminal shortcut
+          if (event.ctrlKey && event.shiftKey && event.key === 'C' && event.type === 'keydown') {
+            const selection = this.term.getSelection();
+            if (selection) {
+              navigator.clipboard.writeText(selection);
+            }
+            return false;
+          }
+          return true;
+        });
+
+        // Handle paste events (right-click paste)
+        const terminalElement = this.$refs.terminalContainer;
+        if (terminalElement) {
+          terminalElement.addEventListener('paste', (event) => {
+            event.preventDefault();
+            const pastedText = event.clipboardData?.getData('text');
+            if (pastedText) {
+              this.handlePaste(pastedText);
+            }
+          });
+        }
 
         // Handle terminal input
         this.term.onData(async (data) => {
@@ -515,26 +627,11 @@ export default {
     },
 
     async setupReadyListener() {
-      let promptWritten = false; // Flag to prevent multiple prompts
-
       this.unlistenJulialabReady = await listen('orchestrator:startup-ready', () => {
         debug('TerminalView: Orchestrator startup is ready. Enabling input.');
-        console.log(
-          'TerminalView: Startup ready event received, promptWritten:',
-          promptWritten,
-          'promptWrittenAfterRestart:',
-          this.promptWrittenAfterRestart
-        );
         this.isReady = true;
-
-        // Only write initial Julia prompt on app startup, not after restarts or route changes
-        if (!this.terminalStore.getHasShownInitialPrompt()) {
-          console.log('TerminalView: Startup ready, writing initial Julia prompt');
-          this.term.write('\x1b[1;32mjulia> \x1b[0m');
-          this.terminalStore.setHasShownInitialPrompt(true);
-        } else {
-          console.log('TerminalView: Startup ready after restart/route change, not writing prompt');
-        }
+        this.clearSavedTerminalState();
+        this.ensurePromptVisible();
         this.term.focus();
 
         // Emit event to notify StartupModal that terminal is ready
@@ -559,17 +656,7 @@ export default {
           if (isBackendReady) {
             debug('TerminalView: Backend is ready. Attempting to enable input.');
             this.isReady = true;
-
-            // Only write initial Julia prompt on app startup, not after restarts or route changes
-            if (!this.terminalStore.getHasShownInitialPrompt()) {
-              console.log('TerminalView: Backend ready, writing initial Julia prompt');
-              this.term.write('\x1b[1;32mjulia> \x1b[0m');
-              this.terminalStore.setHasShownInitialPrompt(true);
-            } else {
-              console.log(
-                'TerminalView: Backend ready after restart/route change, not writing prompt'
-              );
-            }
+            this.clearSavedTerminalState();
             this.term.focus();
 
             // Emit event to notify StartupModal that terminal is ready
@@ -583,6 +670,51 @@ export default {
           clearInterval(this.pollingInterval); // Stop polling on error
         }
       }, 1000); // Poll every 1 second
+    },
+
+    async handlePaste(pastedText) {
+      // Only accept paste if terminal is ready and not busy
+      if (!this.isReady || this.appStore.getBackendBusyStatus() || this.isExecuting) {
+        return;
+      }
+
+      if (!pastedText) return;
+
+      // Check if pasted text contains newlines (multi-line paste)
+      if (pastedText.includes('\n') || pastedText.includes('\r')) {
+        // Multi-line paste: execute each line separately
+        const lines = pastedText
+          .split(/\r?\n/)
+          .map(line => line.trim())
+          .filter(line => line.length > 0);
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          // Write the line to terminal for visual feedback
+          this.term.write(line + '\r\n');
+          
+          try {
+            this.isExecuting = true;
+            await invoke('execute_julia_code', { code: line });
+          } catch (err) {
+            error(`Failed to execute pasted line:`, err);
+          } finally {
+            this.isExecuting = false;
+          }
+          
+          // Small delay between lines to prevent overwhelming Julia
+          if (i < lines.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
+        
+        // Clear input buffer after multi-line paste
+        this.inputBuffer = '';
+      } else {
+        // Single-line paste: add to input buffer
+        this.inputBuffer += pastedText;
+        this.term.write(pastedText);
+      }
     },
 
     clearTerminal() {
@@ -619,6 +751,7 @@ export default {
           const savedState = this.terminalStore.getTerminalSerializedState();
           if (savedState) {
             this.term.write(savedState);
+            this.term.write('\r\n\x1b[90m---------- previous session restored; new session starts below ----------\x1b[0m\r\n');
             debug('TerminalView: Terminal state restored from store');
             return true;
           }
@@ -716,6 +849,8 @@ export default {
         this.isRestarting = false;
         // Re-enable input
         this.isReady = true;
+        this.promptWrittenThisSession = false;
+        this.ensurePromptVisible();
 
         // Restart the polling interval to ensure backend readiness is monitored
         this.startPollingInterval();
@@ -739,7 +874,7 @@ export default {
 .terminal-container {
   width: 100%;
   height: 100%;
-  background-color: #1e1e1e;
+  background-color: var(--jl-terminal-bg);
   transition: opacity 0.3s ease;
 }
 
@@ -753,7 +888,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #1e1e1e;
+  background-color: var(--jl-terminal-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -762,7 +897,7 @@ export default {
 
 .spinner-container {
   text-align: center;
-  color: #ffffff;
+  color: var(--jl-text-primary);
 }
 
 .spinner-text {
