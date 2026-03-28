@@ -222,7 +222,29 @@ export default {
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       return isDark
         ? { background: '#1e1e1e', foreground: '#e0e0e0', cursor: '#e0e0e0', selectionBackground: '#264f78' }
-        : { background: '#ffffff', foreground: '#1a1a1a', cursor: '#1a1a1a', selectionBackground: '#b3d0f0' };
+        : {
+            background: '#ffffff',
+            foreground: '#000000',
+            cursor: '#000000',
+            cursorAccent: '#ffffff',
+            selectionBackground: '#b3d0f0',
+            black: '#000000',
+            red: '#cc0000',
+            green: '#007700',
+            yellow: '#777700',
+            blue: '#0000cc',
+            magenta: '#cc00cc',
+            cyan: '#007777',
+            white: '#cccccc',
+            brightBlack: '#555555',
+            brightRed: '#ff0000',
+            brightGreen: '#389826',
+            brightYellow: '#cccc00',
+            brightBlue: '#0000ff',
+            brightMagenta: '#ff00ff',
+            brightCyan: '#00cccc',
+            brightWhite: '#ffffff',
+          };
     },
     async initializeJuliaSession() {
       try {
@@ -255,6 +277,7 @@ export default {
 
         this.term = new Terminal({
           cursorBlink: true,
+          cursorStyle: 'bar',
           convertEol: true,
           fontFamily: terminalFontFamily,
           fontSize: terminalFontSize,
@@ -274,6 +297,7 @@ export default {
           return;
         }
         this.term.open(terminalContainer);
+        this.term.options.theme = this.getTerminalTheme();
         this.fitAddon.fit(); // Initial fit
 
         // Try to restore previous terminal state only on initial mount
@@ -659,6 +683,16 @@ export default {
             debug('TerminalView: Backend is ready. Attempting to enable input.');
             this.isReady = true;
             this.clearSavedTerminalState();
+            // Fallback: if startup clear already fired, ensure prompt is visible
+            setTimeout(() => {
+              if (this.startupCleared && this.term && this.isReady) {
+                // Check if terminal appears empty (no visible content)
+                const serialized = this.serializeAddon?.serialize() || '';
+                if (!serialized.includes('julia>')) {
+                  this.term.write('\x1b[1;32mjulia> \x1b[0m');
+                }
+              }
+            }, 2000);
             this.term.focus();
 
             // Emit event to notify StartupModal that terminal is ready

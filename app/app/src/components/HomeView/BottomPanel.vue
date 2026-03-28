@@ -1,5 +1,8 @@
 <template>
   <div class="bottom-panel">
+    <div class="command-window-titlebar">
+      <span class="command-window-title">Command Window</span>
+    </div>
     <n-tabs v-model:value="activeTab" type="line" animated>
       <n-tab-pane name="terminal" :tab="'Terminal'">
         <div class="pane-body"><TerminalView /></div>
@@ -9,7 +12,7 @@
           <DiagnosticsPanel :activeFilePath="activeFilePath" @count="onDiagCount" />
         </div>
       </n-tab-pane>
-      <n-tab-pane name="plots" :tab="plotsTabTitle">
+      <n-tab-pane name="history" tab="History">
         <div class="pane-body">
           <PlotLibrary />
         </div>
@@ -19,15 +22,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { NTabs, NTabPane } from 'naive-ui';
 import TerminalView from './TerminalView.vue';
 import DiagnosticsPanel from './DiagnosticsPanel.vue';
 import PlotLibrary from '../shared/PlotLibrary.vue';
-import { usePlotStore } from '../../store/plotStore';
 
-const plotStore = usePlotStore();
-const activeTab = ref<'terminal' | 'diagnostics' | 'plots'>('terminal');
+const activeTab = ref<'terminal' | 'diagnostics' | 'history'>('terminal');
 const activeFilePath = ref<string | null>(null);
 const diagCount = ref<number>(0);
 
@@ -35,22 +36,9 @@ const diagnosticsTabTitle = computed(() =>
   diagCount.value > 0 ? `Diagnostics (${diagCount.value})` : 'Diagnostics'
 );
 
-const plotsTabTitle = computed(() =>
-  plotStore.plotCount > 0 ? `Plots (${plotStore.plotCount})` : 'Plots'
-);
-
 function onDiagCount(n: number) {
   diagCount.value = n;
 }
-
-// Auto-switch to Plots tab when a new plot arrives
-let previousPlotCount = plotStore.plotCount;
-watch(() => plotStore.plotCount, (newCount) => {
-  if (newCount > previousPlotCount) {
-    activeTab.value = 'plots';
-  }
-  previousPlotCount = newCount;
-});
 
 // Listen for active file change events from EditorView
 window.addEventListener('active-file-changed', (e: any) => {
@@ -69,10 +57,9 @@ window.addEventListener('active-file-changed', (e: any) => {
 /* Keep Naive UI defaults; constrain the pane ourselves */
 .pane-body {
   position: relative;
-  height: 100%;
-  width: 100%;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
 /* Ensure tab pane content can size to its container */
 .bottom-panel :deep(.n-tabs) {
@@ -97,5 +84,22 @@ window.addEventListener('active-file-changed', (e: any) => {
   flex: 1 1 auto;
   display: flex;
   min-height: 0;
+  padding: 0;
+}
+
+.command-window-titlebar {
+  background: #005A9C;
+  color: #ffffff;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--jl-font-ui);
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.command-window-title {
+  opacity: 0.95;
 }
 </style>
