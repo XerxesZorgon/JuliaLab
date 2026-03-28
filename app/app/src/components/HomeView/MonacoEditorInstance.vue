@@ -19,6 +19,12 @@ import {
   switchEditorTheme,
 } from '../../utils/monacoThemeUtils';
 import { debugMonacoColors } from '../../utils/debugMonacoColors';
+import {
+  registerJuliaUnicodeProvider,
+  setupRunCellCommand,
+  setupCellHighlighting,
+  applyMtkDecorations,
+} from '../../utils/monacoJuliaUtils';
 
 // Define props
 const props = defineProps({
@@ -71,9 +77,13 @@ const emit = defineEmits([
 // Refs
 const editorContainer = ref<HTMLElement | null>(null);
 let editorInstance: editor.IStandaloneCodeEditor | null = null;
+let _resizeObserver: ResizeObserver | null = null;
 let juliaLspFeatures: JuliaLspFeatures | null = null;
 let preventTrigger = false;
 let currentTheme = 'dark-plus'; // Track current theme to detect changes
+let runCellCleanup: (() => void) | null = null;
+let cellHighlightDisposable: { dispose(): void } | null = null;
+let mtkDecorationDisposable: { dispose(): void } | null = null;
 
 // Settings store
 const settingsStore = useSettingsStore();
@@ -327,6 +337,12 @@ onMounted(async () => {
 
         // Initialize JuliaLspFeatures if language is Julia
         if (props.language === 'julia' && editorInstance) {
+          // Register Unicode completions and Run Cell command
+          registerJuliaUnicodeProvider();
+          runCellCleanup = setupRunCellCommand(editorInstance, props.filePath);
+          cellHighlightDisposable = setupCellHighlighting(editorInstance);
+          mtkDecorationDisposable = applyMtkDecorations(editorInstance);
+
           juliaLspFeatures = new JuliaLspFeatures({
             editor: editorInstance,
             language: props.language,
@@ -456,7 +472,35 @@ onMounted(async () => {
           },
         });
 
+        // Poll until GoldenLayout gives the container real height.
+        // Panels mount during loadLayout() before GL finishes sizing,
+        // so we retry every 100ms for up to 3 seconds.
+        const pollLayout = (attemptsLeft: number) => {
+          if (!editorInstance || !editorContainer.value) return;
+          const w = editorContainer.value.clientWidth;
+          const h = editorContainer.value.clientHeight;
+          if (h > 20 && w > 20) {
+            editorInstance.layout({ width: w, height: h });
+          } else if (attemptsLeft > 0) {
+            setTimeout(() => pollLayout(attemptsLeft - 1), 100);
+          }
+        };
+        pollLayout(30); // up to 3 seconds
+
         emit('editorMounted', editorInstance);
+
+        // Re-measure Monaco whenever the container is resized
+        // (required for GoldenLayout which starts panels at 0×0)
+        _resizeObserver = new ResizeObserver(() => {
+          if (editorInstance && editorContainer.value) {
+            const { clientWidth, clientHeight } = editorContainer.value;
+            console.log('[Monaco] ResizeObserver fired:', clientWidth, clientHeight);
+            if (clientWidth > 0 && clientHeight > 0) {
+              editorInstance.layout({ width: clientWidth, height: clientHeight });
+            }
+          }
+        });
+        if (editorContainer.value) _resizeObserver.observe(editorContainer.value);
 
         // Ensure LSP client is initialized
         // ensureLspClientInitialized not required; LSP lifecycle managed by backend
@@ -670,6 +714,9 @@ watch(
 
 // Cleanup on unmount
 onBeforeUnmount(() => {
+  if (runCellCleanup) { runCellCleanup(); runCellCleanup = null; }
+  if (cellHighlightDisposable) { cellHighlightDisposable.dispose(); cellHighlightDisposable = null; }
+  if (mtkDecorationDisposable) { mtkDecorationDisposable.dispose(); mtkDecorationDisposable = null; }
   if (juliaLspFeatures) {
     juliaLspFeatures.dispose();
     juliaLspFeatures = null;
@@ -679,7 +726,40 @@ onBeforeUnmount(() => {
     editorInstance = null;
   }
   debouncedLspDidChange.cancel();
+  window.removeEventListener('editor:apply-formatted-content', handleApplyFormattedContent);
 });
+
+// Expose the Monaco API globally so useJuliaActions can read model content without prop drilling.
+(window as any).__monaco = monaco;
+
+// Handler for formatted content returned by format_code Tauri command.
+// Uses Monaco's pushEditOperations so the change lands on the undo stack as a single unit.
+const handleApplyFormattedContent = (e: Event) => {
+  const { filePath, content } = (e as CustomEvent).detail as { filePath: string; content: string };
+  if (!editorInstance) return;
+
+  const model = editorInstance.getModel();
+  if (!model) return;
+
+  // Only apply if this instance owns the file that was formatted.
+  const modelFsPath = model.uri.fsPath.toLowerCase().replace(/\\/g, '/');
+  const targetPath   = filePath.toLowerCase().replace(/\\/g, '/');
+  if (modelFsPath !== targetPath) return;
+
+  const fullRange = model.getFullModelRange();
+
+  // Apply as an atomic undoable edit so Ctrl+Z reverts the formatting in one step.
+  model.pushEditOperations(
+    [],
+    [{ range: fullRange, text: content }],
+    () => null
+  );
+
+  // Move cursor to the beginning so the view resets cleanly.
+  editorInstance.setPosition({ lineNumber: 1, column: 1 });
+};
+
+window.addEventListener('editor:apply-formatted-content', handleApplyFormattedContent);
 
 // Watch for prop changes to understand when component is being recreated
 watch(
@@ -883,6 +963,9 @@ onBeforeUnmount(() => {
       error(`MonacoEditorInstance: Failed to clear syntax cache: ${err}`);
     });
   }
+
+  _resizeObserver?.disconnect();
+  _resizeObserver = null;
 });
 
 // Expose methods
@@ -908,4 +991,18 @@ defineExpose({
 
 <style>
 /* Monaco editor global styles */
+
+/* Julia cell highlight — subtle green tint on the current ## cell */
+.julia-cell-highlight {
+  background-color: rgba(56, 152, 38, 0.06) !important;
+  border-left: 2px solid rgba(56, 152, 38, 0.35) !important;
+}
+.mtk-macro-line {
+  border-left: 3px solid rgba(149, 88, 178, 0.5) !important; /* Julia purple */
+  background-color: rgba(149, 88, 178, 0.04) !important;
+}
+.mtk-macro-glyph {
+  background-color: rgba(149, 88, 178, 0.6);
+  border-radius: 2px;
+}
 </style>

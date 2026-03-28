@@ -52,18 +52,29 @@ const DEFAULT_CONFIG = {
     content: [
       {
         type: 'column',
-        content: [{ type: 'component', componentType: 'FileTree', title: 'Files', isClosable: true }],
-      },
-      {
-        type: 'column',
+        width: 20,
         content: [
-          { type: 'component', componentType: 'Editor',        title: 'Editor',         isClosable: true },
-          { type: 'component', componentType: 'CommandWindow', title: 'Command Window', isClosable: true },
+          { type: 'component', componentType: 'FileTree',
+            title: 'Files', isClosable: true },
         ],
       },
       {
         type: 'column',
-        content: [{ type: 'component', componentType: 'Workspace', title: 'Workspace', isClosable: true }],
+        width: 55,
+        content: [
+          { type: 'component', componentType: 'Editor',
+            title: 'Editor', isClosable: true, height: 65 },
+          { type: 'component', componentType: 'CommandWindow',
+            title: 'Command Window', isClosable: true, height: 35 },
+        ],
+      },
+      {
+        type: 'column',
+        width: 25,
+        content: [
+          { type: 'component', componentType: 'Workspace',
+            title: 'Workspace', isClosable: true },
+        ],
       },
     ],
   },
@@ -149,6 +160,16 @@ function mountPanel(component, containerEl) {
   }
 
   app.mount(containerEl)
+  // Force the Vue app root element to fill the GL container
+  const root = /** @type {HTMLElement|null} */ (containerEl.firstElementChild)
+  if (root) {
+    root.style.width = '100%'
+    root.style.height = '100%'
+    root.style.display = 'flex'
+    root.style.flexDirection = 'column'
+    root.style.minHeight = '0'
+    root.style.overflow = 'hidden'
+  }
   return app
 }
 
@@ -204,7 +225,7 @@ onMounted(async () => {
     registerPanels(layout)
 
     // Clear any saved layout from incompatible config versions.
-    const LAYOUT_VERSION = 'v7'
+    const LAYOUT_VERSION = 'v9'
     if (localStorage.getItem('julialab-gl-layout-version') !== LAYOUT_VERSION) {
       localStorage.removeItem('julialab-gl-layout')
       localStorage.setItem('julialab-gl-layout-version', LAYOUT_VERSION)
@@ -235,6 +256,19 @@ onMounted(async () => {
       layout.loadLayout(forceReorderEnabled(DEFAULT_CONFIG))
     }
 
+    // Force GoldenLayout to recalculate panel sizes after init.
+    // This triggers ResizeObserver in Monaco which calls editor.layout()
+    setTimeout(() => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        layout.updateSize({ width: el.clientWidth, height: el.clientHeight })
+      }
+    }, 100)
+    setTimeout(() => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) {
+        layout.updateSize({ width: el.clientWidth, height: el.clientHeight })
+      }
+    }, 500)
+
     layout.addEventListener('stateChanged', () => {
       try {
         localStorage.setItem('julialab-gl-layout', JSON.stringify(layout.saveLayout()))
@@ -243,7 +277,7 @@ onMounted(async () => {
 
     resizeObserver = new ResizeObserver(() => {
       if (el.clientWidth > 0 && el.clientHeight > 0) {
-        layout.updateSize(el.clientWidth, el.clientHeight)
+        layout.updateSize({ width: el.clientWidth, height: el.clientHeight })
       }
     })
     resizeObserver.observe(el)
