@@ -233,7 +233,7 @@ onUnmounted(() => {
 
 /* ─── Ribbon content ─────────────────────────────────────────────────────── */
 .ribbon-content {
-  max-height: 152px;
+  max-height: 80px;
   overflow: hidden;
   background: var(--jl-panel-bg-alt);
   border-bottom: 1px solid var(--jl-border);
@@ -253,8 +253,8 @@ onUnmounted(() => {
   align-items: center;
   overflow-x: auto;
   overflow-y: hidden;
-  min-height: 148px;
-  max-height: 148px;
+  min-height: 72px;
+  max-height: 72px;
   padding: 2px 4px;
 }
 
@@ -273,25 +273,22 @@ onUnmounted(() => {
 
 .ribbon-logo {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 108px;
-  min-width: 108px;
-  height: 148px;
+  align-items: stretch;
+  width: 76px;
+  min-width: 76px;
+  height: 72px;
   flex-shrink: 0;
-  padding: 0px 6px 2px;
   border-right: 1px solid var(--jl-border);
   margin-right: 4px;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 .ribbon-logo-img {
-  width: 96px;
-  height: 96px;
-  object-fit: contain;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
   flex-shrink: 0;
-  margin-bottom: 15px;
+  display: block;
 }
 .ribbon-logo-label {
   font-size: 10px;
@@ -309,7 +306,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: 84px;
+  min-height: 72px;
   color: var(--jl-text-muted);
   font-family: var(--jl-font-ui);
   font-size: 13px;

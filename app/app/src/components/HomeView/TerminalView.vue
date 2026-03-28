@@ -326,7 +326,7 @@ export default {
                 // Small delay after clear to ensure it's visually
                 // complete before writing the prompt
                 setTimeout(() => {
-                  if (this.term && this.isReady) {
+                  if (this.term) {
                     this.term.write('\x1b[1;32mjulia> \x1b[0m');
                   }
                 }, 100);
@@ -631,6 +631,8 @@ export default {
         debug('TerminalView: Orchestrator startup is ready. Enabling input.');
         this.isReady = true;
         this.clearSavedTerminalState();
+        // Reset so _start() detection still works after hot reloads
+        this.startupCleared = false;
         this.ensurePromptVisible();
         this.term.focus();
 

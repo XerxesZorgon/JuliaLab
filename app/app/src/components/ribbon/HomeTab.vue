@@ -7,12 +7,14 @@
         <template #icon><span class="ci" v-html="coloredIcons.newFile" /></template>
       </RibbonBtn>
       <div class="ribbon-col">
-        <RibbonBtn icon="newDropdown" label="New ▾" @click="showNewMenu = !showNewMenu" style="position:relative">
+        <RibbonBtn icon="newDropdown" label="New ▾" @click="showNewMenu = !showNewMenu">
           <template #icon><span class="ci-sm" v-html="coloredIcons.newDropdown" /></template>
         </RibbonBtn>
         <RibbonBtn icon="open" label="Open" @click="handleOpen">
           <template #icon><span class="ci-sm" v-html="coloredIcons.open" /></template>
         </RibbonBtn>
+      </div>
+      <div class="ribbon-col">
         <RibbonBtn icon="goToFile" label="Go to File" @click="showGoToFile = true">
           <template #icon><span class="ci-sm" v-html="coloredIcons.goToFile" /></template>
         </RibbonBtn>

@@ -55,7 +55,7 @@ const DEFAULT_CONFIG = {
         width: 20,
         content: [
           { type: 'component', componentType: 'FileTree',
-            title: 'Files', isClosable: true },
+            title: ' ', isClosable: false },
         ],
       },
       {
@@ -63,9 +63,9 @@ const DEFAULT_CONFIG = {
         width: 55,
         content: [
           { type: 'component', componentType: 'Editor',
-            title: 'Editor', isClosable: true, height: 65 },
+            title: ' ', isClosable: false, height: 65 },
           { type: 'component', componentType: 'CommandWindow',
-            title: 'Command Window', isClosable: true, height: 35 },
+            title: ' ', isClosable: false, height: 35 },
         ],
       },
       {
@@ -73,7 +73,7 @@ const DEFAULT_CONFIG = {
         width: 25,
         content: [
           { type: 'component', componentType: 'Workspace',
-            title: 'Workspace', isClosable: true },
+            title: ' ', isClosable: false },
         ],
       },
     ],
@@ -159,6 +159,13 @@ function mountPanel(component, containerEl) {
     Object.assign(app._context.provides, instance.appContext.provides)
   }
 
+  // Provide file-open handler so FileTreePanel can open files in the editor
+  app.provide('handleOpenFile', (filePath) => {
+    window.dispatchEvent(new CustomEvent('ribbon:open-file', { detail: filePath }))
+  })
+  app.provide('handleOpenPackageSettings', (_projectPath) => {})
+  app.provide('handleProjectRootChanged', async (_newRoot) => {})
+
   app.mount(containerEl)
   // Force the Vue app root element to fill the GL container
   const root = /** @type {HTMLElement|null} */ (containerEl.firstElementChild)
@@ -225,7 +232,7 @@ onMounted(async () => {
     registerPanels(layout)
 
     // Clear any saved layout from incompatible config versions.
-    const LAYOUT_VERSION = 'v9'
+    const LAYOUT_VERSION = 'v11'
     if (localStorage.getItem('julialab-gl-layout-version') !== LAYOUT_VERSION) {
       localStorage.removeItem('julialab-gl-layout')
       localStorage.setItem('julialab-gl-layout-version', LAYOUT_VERSION)
@@ -319,8 +326,7 @@ defineExpose({
   overflow: hidden;
 }
 .lm_header {
-  background: var(--jl-panel-bg-alt, #2d2d2d) !important;
-  height: 28px !important;
+  display: none !important;
 }
 .lm_tab {
   background: var(--jl-panel-bg-alt, #2d2d2d) !important;

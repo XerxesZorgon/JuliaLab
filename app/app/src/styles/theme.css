@@ -1,7 +1,116 @@
+/* ===================================================================
+   MATLAB-Inspired Light Theme (Default)
+   =================================================================== */
 :root {
+  /* Accent colors (Julia branding) */
   --jl-accent-green:  #389826;
   --jl-accent-red:    #cb3c33;
   --jl-accent-purple: #9558b2;
+  --jl-accent-blue:   #0076A8; /* MATLAB-style blue for selections */
+  
+  /* MATLAB header/menu bar colors */
+  --jl-matlab-blue:   #005A9C; /* MATLAB menu bar blue */
+  --jl-matlab-blue-dark: #004578; /* Darker blue for hover */
+  
+  /* Light theme colors matching MATLAB */
+  --jl-bg:            #f5f5f5;  /* Very light gray background */
+  --jl-panel-bg:      #ffffff;  /* White panels (Command Window, Editor) */
+  --jl-panel-bg-alt:  #f0f0f0;  /* Light gray (Ribbon, headers) */
+  --jl-border:        #d0d0d0;  /* Light gray borders */
+  --jl-border-light:  #e0e0e0;  /* Even lighter borders */
+  
+  /* Panel-specific backgrounds (from color swatches in reference image) */
+  --jl-files-panel-bg: #ffffff;  /* White for Files panel */
+  --jl-editor-bg:      #E3E3E3;  /* Light gray for Editor */
+  --jl-terminal-bg:    #ffffff;  /* White for Command Window terminal body */
+  --jl-terminal-header-bg: #E3E3E3; /* Light gray for terminal header */
+  --jl-workspace-bg:   #ffffff;  /* White for Workspace panel */
+  
+  /* Text colors for light theme */
+  --jl-text-primary:  #000000;  /* Black text */
+  --jl-text-secondary:#505050;  /* Dark gray */
+  --jl-text-muted:    #909090;  /* Medium gray */
+  
+  /* Fonts */
+  --jl-font-mono:     'IBM Plex Mono', 'Cascadia Code', 'Consolas', monospace;
+  --jl-font-ui:       'IBM Plex Sans', 'Segoe UI', sans-serif;
+  
+  /* Navigation rail (keep dark like MATLAB) */
+  --jl-nav-rail-bg:   #E6E6E6;
+  --jl-nav-rail-text: #333333;
+  --jl-nav-rail-hover:#B8B8B8;
+}
+
+/* ===================================================================
+   Splitpanes splitter handles
+   =================================================================== */
+.splitpanes__splitter {
+  background: var(--jl-border);
+  z-index: 50;
+  position: relative;
+}
+.splitpanes--horizontal > .splitpanes__splitter {
+  height: 6px;
+  cursor: row-resize;
+}
+.splitpanes--vertical > .splitpanes__splitter {
+  width: 6px;
+  cursor: col-resize;
+}
+.splitpanes__splitter:hover {
+  background: var(--jl-accent-green);
+}
+
+/* === Layout drag-and-drop === */
+.panel-header[draggable="true"] { cursor: grab; }
+.panel-header[draggable="true"]:active { cursor: grabbing; }
+.drag-over {
+  outline: 2px dashed var(--jl-accent-green);
+  outline-offset: -2px;
+}
+
+/* === GoldenLayout drag and drop === */
+
+/* Drag proxy - the floating thumbnail when dragging a panel */
+.lm_dragProxy {
+  opacity: 0.8;
+  z-index: 1000;
+}
+
+.lm_dragProxy .lm_header {
+  background: var(--jl-panel-bg-alt);
+}
+
+/* Drop target zones - highlighted when a panel is dragged over */
+.lm_dropTargetIndicator {
+  outline: 3px solid var(--jl-accent-green);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--jl-accent-green) 15%, transparent);
+  transition: opacity 0.1s;
+  z-index: 999;
+  pointer-events: none;
+}
+
+/* Tabs must be grabbable */
+.lm_tab {
+  cursor: pointer !important;
+  user-select: none;
+}
+
+/* Ensure no ancestor blocks pointer events on GL elements */
+.lm_goldenlayout,
+.lm_goldenlayout * {
+  box-sizing: border-box;
+}
+
+.lm_content {
+  overflow: hidden;
+}
+
+/* ===================================================================
+   Dark Theme (Alternative - can be toggled)
+   =================================================================== */
+:root[data-theme="dark"] {
   --jl-bg:            #1a1a1a;
   --jl-panel-bg:      #1e1e1e;
   --jl-panel-bg-alt:  #252525;
@@ -10,6 +119,13 @@
   --jl-text-primary:  #e0e0e0;
   --jl-text-secondary:#aaaaaa;
   --jl-text-muted:    #555555;
-  --jl-font-mono:     'IBM Plex Mono', 'Cascadia Code', 'Consolas', monospace;
-  --jl-font-ui:       'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --jl-nav-rail-bg:   #282828;
+  --jl-nav-rail-text: #e0e0e0;
+  --jl-nav-rail-hover:#404040;
+  /* Panel-specific overrides for dark mode */
+  --jl-files-panel-bg:     #1e1e1e;
+  --jl-editor-bg:          #1e1e1e;
+  --jl-terminal-bg:        #1e1e1e;
+  --jl-terminal-header-bg: #252525;
+  --jl-workspace-bg:       #1e1e1e;
 }
