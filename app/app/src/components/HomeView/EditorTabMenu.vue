@@ -3,7 +3,7 @@
     <n-space
       align="center"
       justify="space-between"
-      style="padding: 8px 12px; border-bottom: 1px solid #333"
+      style="padding: 4px 8px; border-bottom: 1px solid #e0e0e0; background: #f5f5f5;"
     >
       <div class="menu-left">
         <n-button

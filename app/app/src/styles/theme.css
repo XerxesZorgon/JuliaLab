@@ -21,7 +21,7 @@
   
   /* Panel-specific backgrounds (from color swatches in reference image) */
   --jl-files-panel-bg: #ffffff;  /* White for Files panel */
-  --jl-editor-bg:      #E3E3E3;  /* Light gray for Editor */
+  --jl-editor-bg:      #ffffff;  /* White for Editor */
   --jl-terminal-bg:    #ffffff;  /* White for Command Window terminal body */
   --jl-terminal-header-bg: #E3E3E3; /* Light gray for terminal header */
   --jl-workspace-bg:   #ffffff;  /* White for Workspace panel */

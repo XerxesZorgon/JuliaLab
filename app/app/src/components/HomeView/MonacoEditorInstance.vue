@@ -50,7 +50,7 @@ const props = defineProps({
   },
   theme: {
     type: String,
-    default: 'vs-dark',
+    default: 'vs',
   },
   pendingNavigation: {
     type: Object as () => { filePath: string; range: IRange } | null,
@@ -80,7 +80,7 @@ let editorInstance: editor.IStandaloneCodeEditor | null = null;
 let _resizeObserver: ResizeObserver | null = null;
 let juliaLspFeatures: JuliaLspFeatures | null = null;
 let preventTrigger = false;
-let currentTheme = 'dark-plus'; // Track current theme to detect changes
+let currentTheme = 'vs'; // Track current theme to detect changes
 let runCellCleanup: (() => void) | null = null;
 let cellHighlightDisposable: { dispose(): void } | null = null;
 let mtkDecorationDisposable: { dispose(): void } | null = null;
@@ -296,11 +296,13 @@ onMounted(async () => {
         const editorLineNumbers = settingsStore.getEditorLineNumbers();
         const editorMinimap = props.disableMinimap ? false : settingsStore.getEditorMinimap();
 
-        const initialTheme = normalizeThemeName(props.theme);
+        const initialTheme = 'vs';
         currentTheme = initialTheme;
         editorInstance = monaco.editor.create(editorContainer.value, {
           model: currentModel,
-          theme: initialTheme,
+          theme: 'vs',
+          renderLineHighlight: 'line',
+          lineDecorationsWidth: 5,
           readOnly: props.readOnly,
           automaticLayout: true,
           fontFamily: editorFontFamily,
@@ -308,6 +310,8 @@ onMounted(async () => {
           wordWrap: editorWordWrap ? 'on' : 'off',
           tabSize: editorTabSize,
           minimap: { enabled: editorMinimap },
+          overviewRulerBorder: false,
+          overviewRulerLanes: 0,
           scrollbar: {
             verticalScrollbarSize: 10,
             horizontalScrollbarSize: 10,
@@ -823,14 +827,13 @@ watch(
   ],
   async () => {
     if (editorInstance) {
-      const colorScheme = settingsStore.getEditorColorScheme();
-      const themeToUse = normalizeThemeName(colorScheme);
+      const effectiveTheme = 'vs';
 
       // Only update if theme actually changed
-      if (themeToUse !== currentTheme) {
-        currentTheme = themeToUse;
+      if (effectiveTheme !== currentTheme) {
+        currentTheme = effectiveTheme;
 
-        await switchEditorTheme(editorInstance, colorScheme, (prevent) => {
+        await switchEditorTheme(editorInstance, 'vs', (prevent) => {
           preventTrigger = prevent;
         });
         // Note: switchEditorTheme will set preventTrigger back to false
@@ -994,15 +997,15 @@ defineExpose({
 
 /* Julia cell highlight — subtle green tint on the current ## cell */
 .julia-cell-highlight {
-  background-color: rgba(56, 152, 38, 0.06) !important;
-  border-left: 2px solid rgba(56, 152, 38, 0.35) !important;
+  background: transparent !important;
+  border-left: none !important;
 }
 .mtk-macro-line {
-  border-left: 3px solid rgba(149, 88, 178, 0.5) !important; /* Julia purple */
-  background-color: rgba(149, 88, 178, 0.04) !important;
+  border-left: none !important;
+  background-color: transparent !important;
 }
 .mtk-macro-glyph {
-  background-color: rgba(149, 88, 178, 0.6);
+  background-color: transparent;
   border-radius: 2px;
 }
 </style>

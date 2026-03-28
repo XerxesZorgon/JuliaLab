@@ -7,7 +7,7 @@
         v-model:value="nTabsValue"
         type="card"
         closable
-        tab-style="min-width: 100px;"
+        tab-style="min-width: 80px; height: 24px; font-size: 11px; padding: 0 8px; line-height: 24px;"
         style="height: 100%"
         pane-style="flex-grow: 1; padding: 0; overflow: hidden;"
         @close="handleCloseTab"
@@ -1328,13 +1328,30 @@ const handleGotoDefinition = async (request: {
   overflow: hidden; /* Ensure editor pane does not cause outer scrollbars */
 }
 
-/* Ensure active tabs use our theme color for background */
-:deep(.n-tabs .n-tabs-tab--active) {
-  background-color: v-bind(primaryColor) !important;
-  color: #ffffff !important;
+:deep(.n-tabs-tab) {
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 11px !important;
+  padding: 0 10px !important;
+  background: #e0e0e0 !important;
+  color: #333 !important;
+  border-radius: 3px 3px 0 0 !important;
+  margin-right: 2px !important;
 }
 
-:deep(.n-tabs .n-tabs-tab--active .n-tabs-tab__label) {
-  color: #ffffff !important;
+:deep(.n-tabs-tab.n-tabs-tab--active) {
+  background: #ffffff !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  border-top: 2px solid #005A9C !important;
+}
+
+:deep(.n-tabs-nav) {
+  background: #d4d4d4 !important;
+  padding: 4px 4px 0 4px !important;
+}
+
+:deep(.n-tabs-tab-pad) {
+  display: none !important;
 }
 </style>
