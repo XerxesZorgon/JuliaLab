@@ -97,6 +97,7 @@ export default {
   async mounted() {
     this.terminalStore = useTerminalStore();
     this.appStore = useAppStore();
+    this.startupCleared = false;
     this.settingsStore = useSettingsStore();
 
     // Load settings
@@ -299,6 +300,14 @@ export default {
         this.term.open(terminalContainer);
         this.term.options.theme = this.getTerminalTheme();
         this.fitAddon.fit(); // Initial fit
+        // If Julia already ready (hot reload case), show prompt immediately
+        setTimeout(() => {
+          if (this.term && this.appStore?.juliaDaemonReady && !this.startupCleared) {
+            this.startupCleared = true;
+            this.term.clear();
+            this.term.write('\x1b[1;32mjulia> \x1b[0m');
+          }
+        }, 500);
 
         // Try to restore previous terminal state only on initial mount
         if (this.isInitialMount) {
@@ -342,7 +351,7 @@ export default {
           const payloadStr = Array.isArray(event.payload)
             ? event.payload.map((p) => p.content || '').join('')
             : (typeof event.payload === 'string' ? event.payload : '');
-          if (!this.startupCleared && payloadStr.includes('_start()')) {
+          if (!this.startupCleared && payloadStr.includes('Project activated:')) {
             this.startupCleared = true;
             setTimeout(() => {
               if (this.term) {

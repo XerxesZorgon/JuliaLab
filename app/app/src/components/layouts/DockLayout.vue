@@ -207,6 +207,45 @@ const glContainer    = ref(null)
 const gl             = shallowRef(null)
 let   resizeObserver = null
 
+// ─── Panel toggle handlers ────────────────────────────────────────────────────
+const bottomHidden = ref(false)
+const rightHidden  = ref(false)
+
+const handleToggleBottom = () => {
+  if (!gl.value) return
+  try {
+    const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
+    const centerCol = config.root.content[1]
+    if (!bottomHidden.value) {
+      centerCol.content[0].height = 100
+      centerCol.content[1].height = 0
+      bottomHidden.value = true
+    } else {
+      centerCol.content[0].height = 65
+      centerCol.content[1].height = 35
+      bottomHidden.value = false
+    }
+    gl.value.loadLayout(config)
+  } catch (e) { console.warn('toggle bottom:', e) }
+}
+
+const handleToggleRight = () => {
+  if (!gl.value) return
+  try {
+    const config = JSON.parse(JSON.stringify(DEFAULT_CONFIG))
+    if (!rightHidden.value) {
+      config.root.content[1].width = 75
+      config.root.content[2].width = 0
+      rightHidden.value = true
+    } else {
+      config.root.content[1].width = 55
+      config.root.content[2].width = 25
+      rightHidden.value = false
+    }
+    gl.value.loadLayout(config)
+  } catch (e) { console.warn('toggle right:', e) }
+}
+
 // ─── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(async () => {
   // nextTick ensures Vue has rendered the template and assigned glContainer.
@@ -232,7 +271,7 @@ onMounted(async () => {
     registerPanels(layout)
 
     // Clear any saved layout from incompatible config versions.
-    const LAYOUT_VERSION = 'v11'
+    const LAYOUT_VERSION = 'v12'
     if (localStorage.getItem('julialab-gl-layout-version') !== LAYOUT_VERSION) {
       localStorage.removeItem('julialab-gl-layout')
       localStorage.setItem('julialab-gl-layout-version', LAYOUT_VERSION)
@@ -288,10 +327,15 @@ onMounted(async () => {
       }
     })
     resizeObserver.observe(el)
+
+    window.addEventListener('dock:toggle-bottom', handleToggleBottom)
+    window.addEventListener('dock:toggle-right', handleToggleRight)
   })
 })
 
 onUnmounted(() => {
+  window.removeEventListener('dock:toggle-bottom', handleToggleBottom)
+  window.removeEventListener('dock:toggle-right', handleToggleRight)
   resizeObserver?.disconnect()
   mountedComponents.forEach((app) => app.unmount())
   mountedComponents.clear()
@@ -299,10 +343,22 @@ onUnmounted(() => {
   gl.value = null
 })
 
+function toggleBottomPanel() {
+  if (!gl.value) return
+  window.dispatchEvent(new CustomEvent('dock:toggle-bottom'))
+}
+
+function toggleRightPanel() {
+  if (!gl.value) return
+  window.dispatchEvent(new CustomEvent('dock:toggle-right'))
+}
+
 defineExpose({
   gl,
   saveLayout: () => gl.value?.saveLayout(),
   loadLayout: (config) => gl.value?.loadLayout(config),
+  toggleBottomPanel,
+  toggleRightPanel,
 })
 </script>
 
