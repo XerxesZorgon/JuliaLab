@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core'; // Import invoke
@@ -10,12 +10,14 @@ import ProjectSwitchModal from './components/shared/ProjectSwitchModal.vue';
 import NotificationToast from './components/shared/NotificationToast.vue';
 import WelcomeModal from './components/shared/WelcomeModal.vue';
 import ErrorScreen from './components/shared/ErrorScreen.vue';
-import { NConfigProvider, NGlobalStyle, NMessageProvider, NSpin, darkTheme } from 'naive-ui';
-import { themeOverrides } from './theme';
+import { NConfigProvider, NGlobalStyle, NMessageProvider, NNotificationProvider, NSpin } from 'naive-ui';
+import { themeOverrides, darkTheme } from './theme';
 // MainLayout is now handled by the router
 
 import { debug, logError } from './utils/logger'; // Import our logger
 import { useAppStore } from './store/appStore'; // Import app store
+import { useLayoutStore } from './store/layoutStore'; // Import layout store
+import { useThemeStore } from './store/themeStore'; // Import theme store
 import { applicationService } from './services/applicationService'; // Import application service
 import { unifiedEventService, EventCategory } from './services/unifiedEventService'; // Import unified event service
 
@@ -23,6 +25,11 @@ import { unifiedEventService, EventCategory } from './services/unifiedEventServi
 
 // Initialize stores
 const appStore = useAppStore();
+const layoutStore = useLayoutStore();
+const themeStore = useThemeStore();
+
+// Reactive Naive UI theme — switches between light (null) and dark
+const naiveUiTheme = computed(() => themeStore.currentTheme === 'dark' ? darkTheme : null);
 
 // No longer need useMessage or most other imports/logic here
 
@@ -135,6 +142,9 @@ const handleProjectActivation = () => {
 
 onMounted(async () => {
   try {
+    // Initialize theme (defaults to light)
+    themeStore.initTheme();
+    
     // Open-source version - skip validity checks
     // Set authentication as complete immediately
     authenticationComplete.value = true;
@@ -165,6 +175,16 @@ onMounted(async () => {
       });
     } catch (varsError) {
       await logError('App.vue: Failed to initialize workspace variables listener', varsError);
+    }
+
+    // Store Revise status globally so late-mounting components can read it
+    try {
+      await listen<boolean>('julia:revise-status', (event) => {
+        console.log('[App.vue] julia:revise-status received:', event.payload);
+        appStore.setReviseActive(event.payload);
+      });
+    } catch (reviseError) {
+      await logError('App.vue: Failed to initialize Revise status listener', reviseError);
     }
 
     // Continue orchestrator startup immediately (no authentication needed)
@@ -506,6 +526,9 @@ onMounted(async () => {
     finalSetupErrorMessage.value = `Initialization error: ${err instanceof Error ? err.message : String(err)}`;
     startupReady.value = false; // Hide startup screen to show error
   }
+  
+  // Register global keydown
+  window.addEventListener('keydown', handleGlobalKeydown);
 });
 
 // Set up event listeners for backend initialization
@@ -532,43 +555,6 @@ const setupBackendInitializationListeners = async () => {
     const payload = event.payload;
     appStore.setBackendBusy(false);
   });
-
-  // Set up periodic sync of backend busy status (every 10 seconds to avoid log spam)
-  // DISABLED: This interferes with event-based busy state management
-  // const busyStatusInterval = setInterval(async () => {
-  //   try {
-  //     await appStore.syncBackendBusyStatus();
-  //   } catch (error) {
-  //     debug(`App.vue: Failed to sync backend busy status: ${error}`);
-  //   }
-  // }, 10000);
-
-  // Sync busy status when window becomes visible (user switches back to app)
-  // DISABLED: This might interfere with event-based busy state management
-  // const handleVisibilityChange = async () => {
-  //   if (!document.hidden) {
-  //     debug('App.vue: Window became visible, syncing backend busy status');
-  //     try {
-  //       await appStore.forceSyncBackendBusyStatus();
-  //     } catch (error) {
-  //       debug(`App.vue: Failed to force sync backend busy status: ${error}`);
-  //     }
-  //   }
-  // };
-
-  // DISABLED: Visibility change sync is disabled
-  // document.addEventListener('visibilitychange', handleVisibilityChange);
-
-  // Store interval ID and handler for cleanup
-  // DISABLED: Periodic sync is disabled
-  // (window as any).busyStatusInterval = busyStatusInterval;
-  // (window as any).handleVisibilityChange = handleVisibilityChange;
-
-  // Backend setup completion now handled by StartupModal
-  // window.addEventListener('setup-complete', (() => {
-  //   debug('App.vue: Received setup-complete event from backend');
-  //   handleBackendSetupComplete();
-  // }) as EventListener);
 };
 
 onUnmounted(async () => {
@@ -589,20 +575,6 @@ onUnmounted(async () => {
     unlistenBackendDoneFn = null;
   }
 
-  // Clean up busy status sync interval
-  // DISABLED: Periodic sync is disabled
-  // if ((window as any).busyStatusInterval) {
-  //   clearInterval((window as any).busyStatusInterval);
-  //   (window as any).busyStatusInterval = null;
-  // }
-
-  // Clean up visibility change listener
-  // DISABLED: Visibility change sync is disabled
-  // if ((window as any).handleVisibilityChange) {
-  //   document.removeEventListener('visibilitychange', (window as any).handleVisibilityChange);
-  //   (window as any).handleVisibilityChange = null;
-  // }
-
   // Clean up unified event listeners
   try {
     await unifiedEventService.removeAllListeners();
@@ -616,30 +588,35 @@ onUnmounted(async () => {
   } catch (error) {
     await logError('App.vue: Failed to cleanup application service', error);
   }
+  
+  window.removeEventListener('keydown', handleGlobalKeydown);
 });
 
-// Expose test function globally for manual testing
-(window as any).testJuliaRepl = async (code = '2 + 2') => {
-  try {
-    const result = await invoke('execute_julia_code', {
-      code,
-      command_type: 'test',
-    });
-    return result;
-  } catch (error) {
-    await logError('Julia REPL test failed', error);
-    throw error;
+// Global keyboard shortcuts for layout
+const handleGlobalKeydown = (e: KeyboardEvent) => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === 'b') { // Ctrl+B: Toggle Sidebar (Files)
+      e.preventDefault();
+      layoutStore.toggleFilesPanel();
+    } else if (e.key === 'j') { // Ctrl+J: Toggle Terminal
+      e.preventDefault();
+      layoutStore.toggleTerminalPanel();
+    } else if (e.key === '0') { // Ctrl+0: Toggle Workspace
+      e.preventDefault();
+      layoutStore.toggleWorkspacePanel();
+    }
   }
 };
 </script>
 
 <template>
-  <n-config-provider :theme="darkTheme" :theme-overrides="themeOverrides">
-    <n-message-provider>
-      <n-global-style />
-      <div>
-        <!-- Error Screen - shown when system error occurs -->
-        <ErrorScreen v-if="showErrorScreen" />
+  <n-config-provider :theme="naiveUiTheme" :theme-overrides="themeOverrides">
+    <n-notification-provider>
+      <n-message-provider>
+        <n-global-style />
+        <div>
+          <!-- Error Screen - shown when system error occurs -->
+          <ErrorScreen v-if="showErrorScreen" />
 
         <template v-if="!showErrorScreen">
           <!-- Welcome Modal for new users - shown first -->
@@ -688,16 +665,17 @@ onUnmounted(async () => {
         </template>
 
         <!-- Notification Toast -->
-        <NotificationToast
-          v-if="notification.show"
-          :title="notification.title"
-          :message="notification.message"
-          :type="notification.type"
-          :show="notification.show"
-          @close="notification.show = false"
-        />
-      </div>
-    </n-message-provider>
+          <NotificationToast
+            v-if="notification.show"
+            :title="notification.title"
+            :message="notification.message"
+            :type="notification.type"
+            :show="notification.show"
+            @close="notification.show = false"
+          />
+        </div>
+      </n-message-provider>
+    </n-notification-provider>
   </n-config-provider>
 </template>
 
@@ -709,24 +687,35 @@ body,
   height: 100%;
   margin: 0;
   overflow: hidden; /* Prevent body scrollbars */
-  background-color: #1e1e1e; /* Match editor background or a neutral one */
+  background-color: var(--jl-bg);
 }
 
-.splitpanes__pane {
-  background-color: #2a2a2a !important; /* Your app's dark background color for panes */
+/* === Splitpane theme (jl-theme) === */
+.jl-theme.splitpanes .splitpanes__splitter {
+  background-color: var(--jl-border) !important;
+  transition: background-color 0.15s;
+}
+.jl-theme.splitpanes .splitpanes__splitter:hover {
+  background-color: var(--jl-accent-green) !important;
+}
+.jl-theme.splitpanes--vertical > .splitpanes__splitter {
+  width: 3px !important;
+  min-width: 3px !important;
+}
+.jl-theme.splitpanes--horizontal > .splitpanes__splitter {
+  height: 5px !important;
+  min-height: 5px !important;
 }
 
-/* Styles for splitpanes can remain here if App.vue is the one importing its CSS */
-/* Or move to MainLayout.vue if it imports splitpanes.css directly */
 .splitpanes.default-theme .splitpanes__splitter {
   background-color: #222222; /* Darker grey for splitter */
   border-left: 1px solid #3c3c3c; /* Grey borders */
   border-right: 1px solid #3c3c3c;
-  width: 3px; /* Keep existing width or adjust */
+  width: 3px;
 }
 
 .splitpanes.default-theme .splitpanes__splitter:hover {
-  border-color: #555555; /* Lighter grey on hover */
+  border-color: #555555;
 }
 
 /* If you use horizontal splitters, style them too */
@@ -734,11 +723,10 @@ body,
   background-color: #222222;
   border-top: 1px solid #3c3c3c;
   border-bottom: 1px solid #3c3c3c;
-  /* Resetting these as horizontal splitters don't usually have left/right borders */
   border-left: none;
   border-right: none;
-  width: auto; /* Let height control the clickable area for horizontal */
-  height: 5px !important; /* Adjust height if necessary for horizontal splitters */
+  width: auto;
+  height: 5px !important;
 }
 
 .app-container {
@@ -756,18 +744,6 @@ body,
   align-items: center;
   text-align: center;
 }
-
-/* Example of how you might hide the main app scrollbar during init screen if necessary */
-/* body.initializing {
-  overflow: hidden;
-} */
-
-/* Remove the default Tauri drag region if you don't need it or handle it specifically */
-/*
-[data-tauri-drag-region] {
-  display: none; 
-}
-*/
 
 .setup-error-container {
   display: flex;
@@ -812,6 +788,4 @@ body,
   font-weight: 500;
   margin: 0;
 }
-
-/* No CSS overrides needed - theme should handle everything automatically */
 </style>

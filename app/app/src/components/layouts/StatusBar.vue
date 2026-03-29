@@ -17,30 +17,48 @@
       </span>
     </div>
 
+    <!-- Center: rotating tip of the day -->
+    <div class="statusbar-center">
+      <button
+        class="statusbar-tip"
+        id="statusbar-next-tip-btn"
+        @click="nextTip()"
+        :title="currentTip.text"
+        aria-label="Next tip"
+      >
+        <span class="tip-cat-icon">{{ tipEmoji(currentTip) }}</span>
+        <span class="tip-snippet">{{ tipSnippet }}</span>
+        <span class="tip-nav">›</span>
+      </button>
+    </div>
+
     <div class="statusbar-right">
+      <LayoutPicker :compact="true" />
       <span class="statusbar-item statusbar-filepath" v-if="currentFile">{{ currentFile }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useAppStore } from '../../store/appStore';
+import { useTips } from '../../features/tips/useTips';
+import LayoutPicker from './LayoutPicker.vue';
 
 const appStore = useAppStore();
 const juliaVersion = ref('...');
 
-// Revise state: only true after julia:revise-status event fires with true
-const reviseActive = ref(false);
-let unlistenRevise: UnlistenFn | null = null;
-
-// Reset Revise status when Julia restarts
-const juliaRunning = computed(() => appStore.juliaDaemonReady);
-watch(juliaRunning, (running) => {
-  if (!running) reviseActive.value = false;
+// Tips
+const { currentTip, nextTip, tipEmoji } = useTips();
+const tipSnippet = computed(() => {
+  const text = currentTip.value.text;
+  // Trim to ~55 chars so it fits the status bar at most window widths.
+  return text.length > 58 ? text.slice(0, 55) + '…' : text;
 });
+
+// Revise state: sourced from global appStore (set by App.vue listener)
+const reviseActive = computed(() => appStore.reviseActive);
 // LSP status from appStore
 const lspReady = computed(() => appStore.lspStatus.status === 'ready');
 const lspLabel = computed(() => {
@@ -57,11 +75,6 @@ const currentFile = computed(() => appStore.activeTab);
 
 // Fetch Julia version on mount
 onMounted(async () => {
-  // Listen for Revise load confirmation from backend
-  unlistenRevise = await listen<boolean>('julia:revise-status', (event) => {
-    reviseActive.value = event.payload;
-  });
-
   // Fetch Julia version
   try {
     const version = await invoke('get_julia_version');
@@ -71,9 +84,6 @@ onMounted(async () => {
   }
 });
 
-onUnmounted(() => {
-  unlistenRevise?.();
-});
 </script>
 
 <style scoped>
@@ -134,5 +144,54 @@ onUnmounted(() => {
 
 .dot--grey {
   background-color: var(--jl-text-muted);
+}
+
+/* === Center tip strip === */
+.statusbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.statusbar-tip {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--jl-text-secondary);
+  font-family: var(--jl-font-mono);
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 4px;
+  max-width: 480px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: color 0.15s, background 0.15s;
+}
+.statusbar-tip:hover {
+  color: var(--jl-accent-green);
+  background: rgba(77, 191, 106, 0.08);
+}
+
+.tip-cat-icon {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.tip-snippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tip-nav {
+  flex-shrink: 0;
+  opacity: 0.5;
+  font-size: 12px;
 }
 </style>

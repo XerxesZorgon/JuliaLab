@@ -219,6 +219,12 @@ export const useAppStore = defineStore('app', () => {
     return isJuliaProject.value && projectPath.value !== null;
   }
 
+  const reviseActive = ref(false);
+  const lspActive = ref(false);
+
+  function setReviseActive(val: boolean) { reviseActive.value = val; }
+  function setLspActive(val: boolean) { lspActive.value = val; }
+
   return {
     projectPath,
     setProjectPath,
@@ -257,5 +263,9 @@ export const useAppStore = defineStore('app', () => {
     setActiveTab,
     clearAllTabs,
     updateOpenFile,
+    reviseActive,
+    lspActive,
+    setReviseActive,
+    setLspActive,
   };
 });
