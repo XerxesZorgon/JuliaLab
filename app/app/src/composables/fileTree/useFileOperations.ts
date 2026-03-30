@@ -6,6 +6,7 @@
 import { ref, type Ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { debug, error } from '../../utils/logger';
+import { useAppStore } from '../../store/appStore';
 import type { UseFileOperationsReturn, FileOperationResult } from '../../types/fileTree';
 
 export function useFileOperations(): UseFileOperationsReturn {
@@ -13,6 +14,7 @@ export function useFileOperations(): UseFileOperationsReturn {
   // State
   // ============================
 
+  const appStore = useAppStore();
   const operationLoading = ref<boolean>(false);
   const lastError = ref<string | null>(null);
 
@@ -118,6 +120,19 @@ export function useFileOperations(): UseFileOperationsReturn {
     try {
       debug(`Reading file: ${path}`);
       const content = await invoke('read_file_content', { path });
+      
+      // Lazy load LSP when opening a .jl file
+      if (path.endsWith('.jl')) {
+        debug(`Julia file opened, triggering LSP lazy load: ${path}`);
+        // Get the project path (directory containing the file)
+        // Use the actual project root, not the file's parent directory
+        const projectPath = appStore.projectPath || path.substring(0, Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/')));
+        // Start LSP if needed (non-blocking)
+        invoke('lsp_start_if_needed', { projectPath }).catch((err) => {
+          debug(`LSP lazy load failed (non-critical): ${err}`);
+        });
+      }
+      
       return content;
     } catch (err) {
       const errorMessage = `Failed to read file: ${err}`;

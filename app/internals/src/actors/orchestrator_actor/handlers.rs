@@ -315,9 +315,25 @@ impl Handler<LspReady> for OrchestratorActor {
 
 impl Handler<ProjectActivationComplete> for OrchestratorActor {
     type Result = Result<(), String>;
-    
+
     fn handle(&mut self, _msg: ProjectActivationComplete, ctx: &mut Context<Self>) -> Self::Result {
         debug!("OrchestratorActor: Received ProjectActivationComplete message, emitting StartupEvent::ProjectActivationComplete");
+
+        // Always inform LSP actor of the current project path when project activates,
+        // regardless of startup phase (handles lazy LSP loading case)
+        if let Some(lsp_actor) = &self.lsp_actor {
+            if let Some(project) = &self.current_project {
+                let project_path = project.path.clone();
+                let lsp = lsp_actor.clone();
+                ctx.spawn(actix::fut::wrap_future(async move {
+                    debug!("OrchestratorActor: Setting LSP project path after activation: {}", project_path);
+                    let _ = lsp.send(crate::messages::lsp::SetLspProject {
+                        project_path
+                    }).await;
+                }));
+            }
+        }
+
         ctx.address().do_send(StartupEventMessage {
             event: StartupEvent::ProjectActivationComplete,
         });

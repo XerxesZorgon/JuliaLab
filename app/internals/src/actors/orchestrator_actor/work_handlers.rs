@@ -1,10 +1,9 @@
 use actix::prelude::*;
-use log::{error, warn};
+use log::{debug, error, warn};
 
 use crate::messages::orchestrator::{StartupStateEntered, StartupEventMessage, StartupEvent};
 use crate::messages::process::StartJuliaProcess;
 use crate::messages::execution::ActivateProject;
-use crate::messages::lsp::RestartLspServer;
 use crate::messages::plot::StartPlotServer;
 use crate::messages::file_server::StartFileServer;
 use crate::messages::communication::DisconnectFromPipes;
@@ -349,51 +348,32 @@ impl OrchestratorActor {
         );
     }
     
-    /// Handle StartingLsp phase - start LSP server
+    /// Handle StartingLsp phase - skip LSP startup for lazy loading
     fn handle_start_lsp(&mut self, ctx: &mut Context<Self>) {
-        let lsp_actor = match &self.lsp_actor {
-            Some(actor) => actor.clone(),
-            None => {
-                error!("OrchestratorActor: LSP actor not available");
-                ctx.address().do_send(StartupEventMessage {
-                    event: StartupEvent::StartupFailed("LSP actor not available".to_string()),
-                });
-                return;
+        // LAZY LOADING: Skip LSP startup during initial application startup
+        // LSP will be started on-demand when the first .jl file is opened
+        debug!("OrchestratorActor: Skipping LSP startup (lazy loading enabled). current_project: {:?}, lsp_actor: {}",
+            self.current_project.as_ref().map(|p| &p.path),
+            self.lsp_actor.is_some());
+
+        // Even though we skip LSP startup, set the current project path
+        // so the LSP actor knows which project to use when lazy-started
+        if let Some(lsp_actor) = &self.lsp_actor {
+            if let Some(project) = &self.current_project {
+                let project_path = project.path.clone();
+                let lsp = lsp_actor.clone();
+                ctx.spawn(actix::fut::wrap_future(async move {
+                    let _ = lsp.send(crate::messages::lsp::SetLspProject {
+                        project_path
+                    }).await;
+                }));
             }
-        };
-        
-        let project_path = self.current_project.as_ref()
-            .map(|p| p.path.clone())
-            .unwrap_or_default();
-        
-        let actor_addr = ctx.address();
-        
-        ctx.spawn(
-            async move {
-                match lsp_actor.send(RestartLspServer { project_path }).await {
-                    Ok(Ok(())) => {
-                        // Will be completed by LspReady event
-                        actor_addr.do_send(StartupEventMessage {
-                            event: StartupEvent::LspStarted,
-                        });
-                    }
-                    Ok(Err(e)) => {
-                        error!("OrchestratorActor: Failed to start LSP server: {}", e);
-                        actor_addr.do_send(StartupEventMessage {
-                            event: StartupEvent::StartupFailed(format!("Failed to start LSP server: {}", e)),
-                        });
-                    }
-                    Err(e) => {
-                        error!("OrchestratorActor: Failed to send RestartLspServer: {:?}", e);
-                        actor_addr.do_send(StartupEventMessage {
-                            event: StartupEvent::StartupFailed(format!("Failed to send RestartLspServer: {:?}", e)),
-                        });
-                    }
-                }
-            }
-            .into_actor(self)
-            .map(|_, _actor, _ctx| {})
-        );
+        }
+
+        // Immediately transition to Completed to finish startup
+        ctx.address().do_send(StartupEventMessage {
+            event: StartupEvent::LspReady,
+        });
     }
 }
 
