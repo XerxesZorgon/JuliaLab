@@ -364,7 +364,7 @@ export default {
                   }
                 }, 100);
               }
-            }, 1500);
+            }, 2500);
           }
 
           if (event.payload && Array.isArray(event.payload)) {
@@ -875,35 +875,25 @@ export default {
 
     hideRestartSpinner() {
       console.log('TerminalView: hideRestartSpinner called');
-      console.log('TerminalView: Current isRestarting state:', this.isRestarting);
 
       if (this.term) {
-        console.log(
-          'TerminalView: Terminal exists, clearing terminal - letting Julia send its own prompt'
-        );
         // Clear the terminal to remove any leftover output from restart
         this.term.clear();
-        // Don't write a prompt here - let Julia send its own prompt
         this.term.focus();
       }
 
-      // Add a small delay before allowing Julia output again to let any pending restart output be ignored
-      setTimeout(() => {
-        console.log('TerminalView: Allowing Julia output again after restart delay');
-        // Clear restarting state to hide spinner overlay and allow Julia output again
-        this.isRestarting = false;
-        // Re-enable input
-        this.isReady = true;
-        this.promptWrittenThisSession = false;
-        this.ensurePromptVisible();
+      // Allow Julia output through again, but do NOT enable input or write a
+      // prompt yet.  The polling interval (startPollingInterval) will set
+      // isReady = true once is_backend_ready returns true, and Julia itself
+      // will send its own prompt via julia:output once output suppression lifts.
+      this.isRestarting = false;
+      this.promptWrittenThisSession = false;
+      this.startupCleared = false; // let output listener re-detect startup completion
 
-        // Restart the polling interval to ensure backend readiness is monitored
-        this.startPollingInterval();
+      // Restart the polling interval — it will enable input when pipes are ready
+      this.startPollingInterval();
 
-        console.log(
-          'TerminalView: Spinner overlay hidden, terminal cleared, fresh prompt written, input enabled, Julia output restored'
-        );
-      }, 100); // 100ms delay to let any pending Julia output be processed and ignored
+      console.log('TerminalView: Spinner hidden, waiting for backend readiness before enabling input');
     },
   },
 };

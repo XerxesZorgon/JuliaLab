@@ -119,7 +119,7 @@ async fn send_message_to_julia(
 pub async fn read_julia_response(
     code_stream: &Arc<Mutex<Option<LocalSocketStream>>>,
     event_manager: &EventService,
-    current_request: &Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+    pending_requests: &Arc<Mutex<std::collections::HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
     plot_actor: Option<Addr<crate::actors::PlotActor>>,
     state: &super::state::State,
 ) -> Result<(), String> {
@@ -180,7 +180,7 @@ pub async fn read_julia_response(
                             process_actor,
                         );
                         
-                        if let Err(e) = handler.handle_julia_message(&message, current_request).await {
+                        if let Err(e) = handler.handle_julia_message(&message, pending_requests).await {
                             error!("[CommunicationActor::IoOperations] Error handling message: {}", e);
                         }
                     }
@@ -205,7 +205,7 @@ pub async fn read_julia_response(
                         match handler.parse_nested_message(buffer.trim()) {
                             Ok(Some(message)) => {
                                 debug!("[CommunicationActor::IoOperations] Fallback parse succeeded");
-                                if let Err(e) = handler.handle_julia_message(&message, current_request).await {
+                                if let Err(e) = handler.handle_julia_message(&message, pending_requests).await {
                                     error!("[CommunicationActor::IoOperations] Error handling nested message: {}", e);
                                 }
                             }

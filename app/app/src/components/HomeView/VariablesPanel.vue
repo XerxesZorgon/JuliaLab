@@ -90,36 +90,18 @@
           Large variable - showing first 10,000 characters. Full pagination support coming soon!
         </div>
 
-        <!-- Display table for arrays/matrices -->
+        <!-- Display table for arrays/matrices using new DataGrid -->
         <div
           v-if="isArrayData(selectedVariable)"
           class="table-container"
-          :class="{ 'hide-headers': !isStructuredData(selectedVariable) }"
         >
-          <table class="data-table">
-            <thead v-if="isStructuredData(selectedVariable)">
-              <tr>
-                <th v-for="column in getTableColumns(selectedVariable)" :key="column.key">
-                  {{ column.title }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, index) in getTableData(selectedVariable)"
-                :key="index"
-                :class="{ even: index % 2 === 0 }"
-              >
-                <td
-                  v-for="column in getTableColumns(selectedVariable)"
-                  :key="column.key"
-                  :title="row[column.key]"
-                >
-                  {{ row[column.key] }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <DataGrid 
+            :variable-name="selectedVariable.name"
+            :variable-type="selectedVariable.type"
+            :initial-total-rows="selectedVariable.element_count || selectedVariable.parsed_data?.length"
+            :initial-total-cols="selectedVariable.column_names?.length || getTableColumns(selectedVariable).length"
+            :column-names="selectedVariable.column_names"
+          />
         </div>
 
         <!-- Display raw value for non-array data -->
@@ -138,6 +120,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { error, warn } from '../../utils/logger';
 import { useAppStore } from '../../store/appStore';
+import DataGrid from '../shared/DataGrid.vue';
 
 // Props
 const props = defineProps<{
@@ -206,14 +189,12 @@ const tableData = computed(() => {
   }));
 });
 
-// Row props — click handler for expandable variables
+// Row props — click handler for all variables
 const rowProps = (row: any) => {
   return {
-    style: row._raw.is_expandable ? 'cursor: pointer;' : '',
+    style: 'cursor: pointer;',
     onClick: () => {
-      if (row._raw.is_expandable) {
-        showVariableModal(row.name, row._raw);
-      }
+      showVariableModal(row.name, row._raw);
     },
   };
 };
@@ -726,11 +707,11 @@ onUnmounted(() => {
   color: var(--jl-text-secondary);
 }
 
-/* Dark theme table background */
+/* Table theme — adapts to both light and dark via CSS variables */
 :deep(.n-data-table) {
-  --n-th-color: var(--jl-panel-bg-alt, #252525);
+  --n-th-color: var(--jl-panel-bg-alt);
   --n-td-color: var(--jl-panel-bg);
-  --n-td-color-hover: rgba(255, 255, 255, 0.03);
+  --n-td-color-hover: var(--jl-border-light);
   --n-border-color: var(--jl-border);
   --n-th-text-color: var(--jl-text-secondary);
   --n-td-text-color: var(--jl-text-primary);
@@ -770,12 +751,12 @@ onUnmounted(() => {
 }
 
 .truncation-warning {
-  background-color: #3a3a00;
-  border: 1px solid #8b8b00;
+  background-color: rgba(243, 156, 18, 0.12);
+  border: 1px solid var(--jl-warning, #F39C12);
   border-radius: 4px;
   padding: 8px 12px;
   margin-bottom: 8px;
-  color: #ffeb3b;
+  color: var(--jl-text-primary);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -837,13 +818,13 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 .data-table tr:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--jl-border-light);
 }
 .data-table tr.even {
   background-color: var(--jl-bg);
 }
 .data-table tr.even:hover {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: var(--jl-border-light);
 }
 
 .loading-indicator {
@@ -862,10 +843,10 @@ onUnmounted(() => {
   background: var(--jl-panel-bg);
 }
 .panel-content::-webkit-scrollbar-thumb {
-  background: #424242;
+  background: var(--jl-border);
   border-radius: 4px;
 }
 .panel-content::-webkit-scrollbar-thumb:hover {
-  background: #4e4e4e;
+  background: var(--jl-text-muted);
 }
 </style>

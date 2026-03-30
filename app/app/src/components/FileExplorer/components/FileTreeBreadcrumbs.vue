@@ -75,13 +75,13 @@ const handleNavigate = (path: string) => {
 <style scoped>
 .file-tree-breadcrumbs {
   padding: 4px 8px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--jl-border);
   flex-shrink: 0;
-  background-color: #2a2a2a;
+  background-color: var(--jl-files-panel-bg);
 }
 
 :deep(.n-breadcrumb-item) {
-  color: #ccc;
+  color: var(--jl-text-secondary);
 }
 
 :deep(.n-breadcrumb-item--clickable) {
@@ -89,6 +89,6 @@ const handleNavigate = (path: string) => {
 }
 
 :deep(.n-breadcrumb-item--clickable:hover) {
-  color: #fff;
+  color: var(--jl-text-primary);
 }
 </style>

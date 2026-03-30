@@ -58,17 +58,17 @@ impl Handler<StartupEventMessage> for OrchestratorActor {
                     // Project found, stay in ActivatingProject to activate it
                     None
                 } else {
-                    // No project, skip to StartingLsp
-                    Some(StartupPhase::StartingLsp)
+                    // No project, skip to Completed (LSP is lazy loaded)
+                    Some(StartupPhase::Completed)
                 }
             }
             
-            // Project activation complete
+            // Project activation complete - skip to Completed (LSP is lazy loaded)
             (StartupPhase::ActivatingProject, StartupEvent::ProjectActivationComplete) => {
-                Some(StartupPhase::StartingLsp)
+                Some(StartupPhase::Completed)
             }
             
-            // Work completion: LSP started
+            // Work completion: LSP started (still keep for manual/lazy trigger)
             (StartupPhase::StartingLsp, StartupEvent::LspStarted) => {
                 Some(StartupPhase::WaitingForLspReady)
             }

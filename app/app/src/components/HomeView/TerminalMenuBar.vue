@@ -149,8 +149,8 @@ const confirmRestart = async () => {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  background-color: #2d2d30;
-  border-bottom: 1px solid #3c3c3c;
+  background-color: var(--jl-terminal-header-bg);
+  border-bottom: 1px solid var(--jl-border);
   padding: 4px 12px;
   height: 28px;
 }

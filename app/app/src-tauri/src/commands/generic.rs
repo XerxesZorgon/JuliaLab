@@ -462,6 +462,87 @@ pub async fn execute_julia_code(
     app_state.actor_system.execution_actor.send(ExecuteReplRequest { code }).await.map_err(|_| "Actor comm failed".to_string())?
 }
 
+/// Format Julia source code using JuliaFormatter.jl
+///
+/// Sends `source_text` to the running Julia session, calls
+/// `JuliaFormatter.format_text(source_text)`, and returns the formatted string.
+///
+/// We Base64-encode the user's source before embedding it in the Julia snippet
+/// so that quotes, backslashes, and `$`-sigils cannot break the interpolation.
+#[tauri::command]
+pub async fn format_code(
+    source_text: String,
+    app_state: State<'_, AppState>,
+) -> Result<String, String> {
+    use base64::{engine::general_purpose::STANDARD, Engine};
+    use internals::messages::execution::ExecuteApiRequest;
+
+    debug!("[format_code] Formatting {} bytes", source_text.len());
+
+    // Encode user source so it is safe to embed inside a Julia string literal.
+    let b64 = STANDARD.encode(source_text.as_bytes());
+
+    // Julia snippet:
+    //   1. decode the Base64 payload back to a String
+    //   2. run JuliaFormatter.format_text()
+    //   3. print the result so ExecuteApiRequest can capture it
+    let julia_snippet = format!(
+        r#"begin
+    import Base64, JuliaFormatter
+    _raw = Base64.base64decode("{b64}")
+    _src = String(copy(_raw))
+    _fmt = JuliaFormatter.format_text(_src)
+    print(_fmt)
+end"#,
+        b64 = b64
+    );
+
+    let result = app_state
+        .actor_system
+        .execution_actor
+        .send(ExecuteApiRequest { code: julia_snippet })
+        .await
+        .map_err(|_| "Actor comm failed".to_string())??;
+
+    if result.trim().is_empty() {
+        return Err("JuliaFormatter returned an empty result".to_string());
+    }
+
+    Ok(result)
+}
+
+/// Execute code via CommunicationActor (flexible execution)
+#[tauri::command]
+pub async fn execute_code(
+    code: String,
+    execution_type: String,
+    file_path: Option<String>,
+    app_state: State<'_, AppState>,
+) -> Result<String, String> {
+    debug!("[OrchestratorCommands] Executing code via CommunicationActor: type={}", execution_type);
+
+    use internals::messages::ExecutionType;
+    let exec_type = ExecutionType::from(execution_type.as_str());
+
+    match app_state.actor_system.communication_actor.send(ExecuteCode {
+        code,
+        execution_type: exec_type,
+        file_path,
+        suppress_busy_events: false,
+    }).await {
+        Ok(Ok(internals::messages::JuliaMessage::ExecutionComplete { result, error, success, .. })) => {
+            if success {
+                Ok(result.unwrap_or_else(|| "Success".to_string()))
+            } else {
+                Err(error.unwrap_or_else(|| "Unknown execution error".to_string()))
+            }
+        }
+        Ok(Ok(_)) => Err("Unexpected response message type".to_string()),
+        Ok(Err(e)) => Err(format!("Execution failed: {}", e)),
+        Err(e) => Err(format!("Actor communication failed: {}", e)),
+    }
+}
+
 /// Execute notebook cell with proper event routing
 #[tauri::command]
 pub async fn execute_notebook_cell(
@@ -648,6 +729,43 @@ pub async fn get_variable_value(
         }
         _ => Err("Failed to get variable value".to_string())
     }
+}
+
+/// Get a chunk of data for a specific variable (for pagination)
+#[tauri::command]
+pub async fn get_variable_chunk(
+    variable_name: String,
+    row_start: usize,
+    row_count: usize,
+    col_start: usize,
+    col_count: usize,
+    app_state: State<'_, AppState>,
+) -> Result<Value, String> {
+    debug!("[OrchestratorCommands] Getting chunk for variable: {} (rows: {}-{}, cols: {}-{})", 
+        variable_name, row_start, row_start + row_count, col_start, col_start + col_count);
+
+    // Let's use ExecuteApiRequest style by constructing the Julia code directly.
+    // This is faster for a one-off request that needs structured JSON return.
+    
+    let code = format!(
+        "begin
+            using JSON
+            chunk_data, total_rows, total_cols = get_variable_chunk(\"{}\", {}, {}, {}, {})
+            JSON.json(Dict(
+                \"variable_name\" => \"{}\",
+                \"data\" => chunk_data,
+                \"total_rows\" => total_rows,
+                \"total_cols\" => total_cols
+            ))
+         end",
+        variable_name, row_start, row_count, col_start, col_count, variable_name
+    );
+
+    use internals::messages::execution::ExecuteApiRequest;
+    let result_str = app_state.actor_system.execution_actor.send(ExecuteApiRequest { code }).await
+        .map_err(|_| "Actor comm failed".to_string())??;
+
+    serde_json::from_str(&result_str).map_err(|e| format!("Failed to parse chunk JSON: {}", e))
 }
 
 /// Get session status

@@ -121,8 +121,12 @@ impl LspService {
 
     /// Start LSP server
     pub async fn start_lsp_server(&self, project_path: String) -> Result<(), String> {
+        if project_path.is_empty() {
+            debug!("LspService: Skipping start — project path not set yet");
+            return Ok(());
+        }
         debug!("LspService: Starting LSP server for project: {}", project_path);
-        
+
         // Ensure service is created (lazy initialization - happens after base docs extraction)
         self.ensure_service().await?;
         

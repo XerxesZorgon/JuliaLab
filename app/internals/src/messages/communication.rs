@@ -92,6 +92,34 @@ pub enum JuliaMessage {
         variable_name: String,
         value: Option<String>,
     },
+
+    // Get variable data chunk (for large Arrays/DataFrames)
+    GetVariableChunk {
+        id: String,
+        variable_name: String,
+        row_start: usize,
+        row_count: usize,
+        col_start: usize,
+        col_count: usize,
+    },
+    VariableChunk {
+        id: String,
+        variable_name: String,
+        data: serde_json::Value,
+        total_rows: usize,
+        total_cols: usize,
+    },
+
+    // Plot Update/Status Messages (for interactive plots)
+    PlotUpdate {
+        payload: serde_json::Value,
+    },
+
+    // Method Browser: method introspection result from Julia
+    MethodInfo {
+        id: String,
+        methods: serde_json::Value,
+    },
 }
 
 /// Session status information
@@ -251,6 +279,10 @@ impl JuliaMessage {
             JuliaMessage::WorkspaceVariables { id, .. } => Self::validate_workspace_variables(id),
             JuliaMessage::GetVariableValue { id, variable_name } => Self::validate_get_variable_value(id, variable_name),
             JuliaMessage::VariableValue { id, variable_name, .. } => Self::validate_variable_value(id, variable_name),
+            JuliaMessage::GetVariableChunk { id, variable_name, .. } => Self::validate_get_variable_chunk(id, variable_name),
+            JuliaMessage::VariableChunk { id, variable_name, .. } => Self::validate_variable_chunk(id, variable_name),
+            JuliaMessage::PlotUpdate { .. } => Ok(()),
+            JuliaMessage::MethodInfo { .. } => Ok(()),
         }
     }
 
@@ -335,8 +367,20 @@ impl JuliaMessage {
         Ok(())
     }
 
-    fn validate_variable_value(id: &str, variable_name: &str) -> Result<(), String> {
+    fn validate_variable_value(id: &str, variable_name: &str) -> Result<() , String> {
         Self::validate_id(id, "Variable value ID")?;
+        Self::validate_non_empty(variable_name, "Variable name")?;
+        Ok(())
+    }
+
+    fn validate_get_variable_chunk(id: &str, variable_name: &str) -> Result<(), String> {
+        Self::validate_id(id, "Get variable chunk ID")?;
+        Self::validate_non_empty(variable_name, "Variable name")?;
+        Ok(())
+    }
+
+    fn validate_variable_chunk(id: &str, variable_name: &str) -> Result<(), String> {
+        Self::validate_id(id, "Variable chunk ID")?;
         Self::validate_non_empty(variable_name, "Variable name")?;
         Ok(())
     }

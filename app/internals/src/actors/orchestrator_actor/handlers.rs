@@ -4,6 +4,7 @@ use log::{debug, error};
 use crate::messages::orchestrator::*;
 use crate::messages::orchestrator::{StartupEventMessage, StartupEvent};
 use crate::messages::coordination::*;
+use crate::messages::execution::ActivateProject;
 
 use super::{OrchestratorActor, StartupPhase};
 
@@ -293,10 +294,41 @@ impl Handler<JuliaMessageLoopReady> for OrchestratorActor {
     type Result = Result<(), String>;
     
     fn handle(&mut self, _msg: JuliaMessageLoopReady, ctx: &mut Context<Self>) -> Self::Result {
-        debug!("OrchestratorActor: Received JuliaMessageLoopReady message, emitting StartupEvent::JuliaMessageLoopReady");
+        debug!("OrchestratorActor: Received JuliaMessageLoopReady message (restart_pending={}, phase={:?})",
+            self.restart_pending, self.startup_phase);
+        
+        // During normal startup, feed event into the state machine
         ctx.address().do_send(StartupEventMessage {
             event: StartupEvent::JuliaMessageLoopReady,
         });
+        
+        // If a restart is pending, finalize it now that Julia is ready
+        if self.restart_pending {
+            self.restart_pending = false;
+            let request_id = self.restart_request_id.take();
+            let event_manager = self.event_manager.clone();
+            let execution_actor = self.execution_actor.clone();
+            let current_project = self.current_project.clone();
+            
+            ctx.spawn(actix::fut::wrap_future(async move {
+                // Reactivate the project in the new Julia process
+                if let (Some(ea), Some(project)) = (&execution_actor, &current_project) {
+                    debug!("OrchestratorActor: Reactivating project after restart: {}", project.path);
+                    let _ = ea.send(ActivateProject { project_path: project.path.clone() }).await;
+                }
+                
+                // Emit restart completed event
+                let _ = event_manager.emit_orchestrator_julia_restart_completed("Julia restart completed").await;
+                
+                // Emit backend done event to re-enable all frontend buttons
+                if let Some(rid) = &request_id {
+                    let _ = event_manager.emit_backend_done(rid).await;
+                }
+                
+                debug!("OrchestratorActor: Restart finalized after JuliaMessageLoopReady");
+            }));
+        }
+        
         Ok(())
     }
 }

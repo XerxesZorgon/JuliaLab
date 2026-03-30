@@ -255,3 +255,23 @@ pub async fn export_plot(
     debug!("Successfully exported plot to {}", file_path);
     Ok(file_path)
 }
+
+/// Plot ribbon export command (Task 3 stub).
+/// NOTE: Native save dialog wiring will be finalized in cleanup pass.
+#[tauri::command]
+pub async fn plot_export(format: String, _app_handle: AppHandle) -> Result<Option<String>, AppError> {
+    let fmt = format.to_lowercase();
+    if !matches!(fmt.as_str(), "png" | "svg" | "pdf") {
+        return Err(AppError::ValidationError(format!("Unsupported plot export format: {}", format)));
+    }
+
+    debug!("PlotCmd: plot_export requested for format={} (stub)", fmt);
+    Ok(None)
+}
+
+/// Plot ribbon new figure command (Task 3 stub).
+#[tauri::command]
+pub async fn new_figure() -> Result<(), AppError> {
+    debug!("PlotCmd: new_figure called (stub)");
+    Ok(())
+}

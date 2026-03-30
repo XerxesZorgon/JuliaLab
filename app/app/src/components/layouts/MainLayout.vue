@@ -157,10 +157,10 @@
       class="fullscreen-route"
       style="flex:1; min-height:0; overflow:hidden;"
     >
-      <CurveFittingApp @close="handleRibbonTabChange('HOME')" />
+      <AppsGallery @close="handleRibbonTabChange('HOME')" />
     </div>
 
-    <div class="fullscreen-route" v-else>
+    <div class="fullscreen-route" v-else-if="route.name !== 'Home'">
       <router-view />
     </div>
 
@@ -256,7 +256,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, h, provide } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import CurveFittingApp from '../AppsView/CurveFittingApp.vue';
+import AppsGallery from '../AppsView/AppsGallery.vue';
 import { useMessage, useNotification, NIcon, NSpace, NCard, NButton, NTabs, NTabPane, NDivider } from 'naive-ui';
 import { Splitpanes, Pane } from 'splitpanes';
 import 'splitpanes/dist/splitpanes.css';

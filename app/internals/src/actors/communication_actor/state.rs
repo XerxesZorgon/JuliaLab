@@ -3,6 +3,7 @@
 
 use crate::services::events::EventService;
 use actix::prelude::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
@@ -39,10 +40,10 @@ pub struct State {
     pub process_actor: Arc<Mutex<Option<Addr<crate::actors::ProcessActor>>>>,
     
     // Communication state - accessed from spawned tasks, need mutexes
+    // Use HashMap to track multiple pending requests simultaneously
     #[allow(clippy::type_complexity)]
-    pub current_request: Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+    pub pending_requests: Arc<Mutex<HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
     pub message_sender: Arc<Mutex<Option<mpsc::Sender<crate::messages::JuliaMessage>>>>,
-    
 }
 
 impl State {
@@ -63,7 +64,7 @@ impl State {
             event_manager,
             plot_actor: Arc::new(Mutex::new(Some(plot_actor))),
             process_actor: Arc::new(Mutex::new(Some(process_actor))),
-            current_request: Arc::new(Mutex::new(None)),
+            pending_requests: Arc::new(Mutex::new(HashMap::new())),
             message_sender: Arc::new(Mutex::new(None)),
         }
     }

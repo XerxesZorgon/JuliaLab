@@ -34,6 +34,10 @@ pub struct OrchestratorActor {
     // Startup phase state machine (replaces multiple boolean flags)
     startup_phase: StartupPhase,
     
+    // Restart tracking: defers "restart completed" until Julia is actually ready
+    restart_pending: bool,
+    restart_request_id: Option<String>,
+    
     // Phase tracking for watchdog timer
     // Watchdog timer fields removed - user doesn't want timeouts
     
@@ -63,6 +67,8 @@ impl OrchestratorActor {
             current_project: None,
             shutdown_requested: false,
             startup_phase: StartupPhase::NotStarted,
+            restart_pending: false,
+            restart_request_id: None,
             // Watchdog timer fields removed
             event_manager,
             config_actor: None,
@@ -316,35 +322,20 @@ impl OrchestratorActor {
         // before considering the connection ready for use
         debug!("OrchestratorActor: Waiting for pipe ready signals to connect, then MESSAGE_LOOP_READY for readiness after restart");
         
-        // Reactivate the current project if one was active before restart
-        // Note: Project activation in main Julia process will happen when JuliaMessageLoopReady is received
-        // The new Julia process will go through the same initialization sequence and emit MESSAGE_LOOP_READY
+        // Inform LSP server of the project path (don't start it yet - lazy loading)
         if let Some(current_project) = &self.current_project {
-            debug!("OrchestratorActor: Project will be reactivated when JuliaMessageLoopReady is received after restart: {}", current_project.path);
-            
-            // Restart LSP server for the project (LSP is independent and can start immediately)
             if let Some(lsp_actor) = &self.lsp_actor {
-                lsp_actor
-                    .send(StartLspServer { project_path: current_project.path.clone() })
-                    .await
-                    .map_err(|_| "Failed to restart LSP server after restart")??;
+                let _ = lsp_actor.send(SetLspProject { project_path: current_project.path.clone() }).await;
             }
-            
-            debug!("OrchestratorActor: LSP server restart initiated after Julia restart");
-        } else {
-            debug!("OrchestratorActor: No project was active before restart, skipping reactivation");
         }
         
-        // Emit restart completed event
-        debug!("OrchestratorActor: About to emit restart completed event");
-        self.event_manager.emit_orchestrator_julia_restart_completed("Julia restart completed").await?;
-        debug!("OrchestratorActor: Restart completed event emitted successfully");
+        // Defer "restart completed" and "backend done" until JuliaMessageLoopReady is received.
+        // The stderr monitoring will auto-reconnect pipes and signal MESSAGE_LOOP_READY,
+        // which reaches us via the JuliaMessageLoopReady handler.
+        self.restart_pending = true;
+        self.restart_request_id = Some(request_id);
         
-        // Emit backend done event to re-enable all frontend buttons
-        debug!("OrchestratorActor: Emitting backend done event for restart");
-        self.event_manager.emit_backend_done(&request_id).await?;
-        
-        debug!("OrchestratorActor: Julia restarted successfully");
+        debug!("OrchestratorActor: Julia process started, waiting for MESSAGE_LOOP_READY to finalize restart");
         Ok(())
     }
     
@@ -522,49 +513,41 @@ impl OrchestratorActor {
                     Ok(Err(e)) => {
                         if e.contains("Communication service not connected") {
                             warn!("OrchestratorActor: Communication not ready, cannot activate project: {}", e);
+                            if let Some(process_actor) = &process_actor {
+                                let _ = process_actor.send(SetOutputSuppression { suppressed: false }).await;
+                                debug!("OrchestratorActor: Cleared output suppression after activation was blocked by communication readiness");
+                            }
                             // Transition back to Completed since we can't proceed
                             self.transition_startup_phase(StartupPhase::Completed);
                             return Err(format!("Communication not ready: {}", e));
                         } else {
                             error!("OrchestratorActor: Failed to activate project: {}", e);
+                            if let Some(process_actor) = &process_actor {
+                                let _ = process_actor.send(SetOutputSuppression { suppressed: false }).await;
+                                debug!("OrchestratorActor: Cleared output suppression after project activation error");
+                            }
                             self.startup_phase = StartupPhase::Failed(e.clone());
                             return Err(format!("Failed to activate project: {}", e));
                         }
                     }
                     Err(e) => {
                         error!("OrchestratorActor: Failed to send ActivateProject message: {:?}", e);
+                        if let Some(process_actor) = &process_actor {
+                            let _ = process_actor.send(SetOutputSuppression { suppressed: false }).await;
+                            debug!("OrchestratorActor: Cleared output suppression after ActivateProject send failure");
+                        }
                         self.startup_phase = StartupPhase::Failed(format!("Failed to send ActivateProject: {:?}", e));
                         return Err(format!("Failed to send ActivateProject message: {:?}", e));
                     }
                 }
             }
         } else {
-            // Not a Julia project - start LSP immediately and return to Completed
+            // Not a Julia project - just set project path and go to Completed
             if let Some(lsp_actor) = &lsp_actor {
-                debug!("OrchestratorActor: Starting LSP for non-Julia project: {}", project_path);
-                self.transition_startup_phase(StartupPhase::StartingLsp);
-                
-                match lsp_actor.send(RestartLspServer { project_path: project_path.clone() }).await {
-                    Ok(Ok(())) => {
-                        debug!("OrchestratorActor: LSP server restart message sent successfully");
-                        // Transition to WaitingForLspReady, then Completed when LspReady is received
-                        self.transition_startup_phase(StartupPhase::WaitingForLspReady);
-                    }
-                    Ok(Err(e)) => {
-                        error!("OrchestratorActor: Failed to restart LSP server: {}", e);
-                        self.startup_phase = StartupPhase::Failed(e.clone());
-                        return Err(format!("Failed to restart LSP server: {}", e));
-                    }
-                    Err(e) => {
-                        error!("OrchestratorActor: Failed to send RestartLspServer message: {:?}", e);
-                        self.startup_phase = StartupPhase::Failed(format!("Failed to send RestartLspServer: {:?}", e));
-                        return Err(format!("Failed to send RestartLspServer message: {:?}", e));
-                    }
-                }
-            } else {
-                // No LSP actor, just return to Completed
-                self.transition_startup_phase(StartupPhase::Completed);
+                debug!("OrchestratorActor: Setting LSP project for non-Julia project: {}", project_path);
+                let _ = lsp_actor.send(SetLspProject { project_path: project_path.clone() }).await;
             }
+            self.transition_startup_phase(StartupPhase::Completed);
         }
         
         self.event_manager.emit_orchestrator_event(
@@ -611,6 +594,8 @@ impl Clone for OrchestratorActor {
             current_project: self.current_project.clone(),
             shutdown_requested: self.shutdown_requested,
             startup_phase: self.startup_phase.clone(),
+            restart_pending: self.restart_pending,
+            restart_request_id: self.restart_request_id.clone(),
             // Watchdog timer fields removed
             event_manager: self.event_manager.clone(),
             config_actor: self.config_actor.clone(),

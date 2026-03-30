@@ -24,6 +24,13 @@ pub struct RestartLspServer {
     pub project_path: String,
 }
 
+/// Set current project for LSP (without starting the server)
+#[derive(Message)]
+#[rtype(result = "Result<(), String>")]
+pub struct SetLspProject {
+    pub project_path: String,
+}
+
 /// Check if LSP is running
 #[derive(Message)]
 #[rtype(result = "Result<bool, String>")]

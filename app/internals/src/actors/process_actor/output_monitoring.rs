@@ -1,4 +1,4 @@
-use log::error;
+use log::{debug, error};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::ChildStdout;
@@ -334,21 +334,25 @@ pub fn start_stderr_monitoring(
                 // When project activation completes, disable output suppression
                 // This signal is emitted after Pkg.activate() and Pkg.instantiate() complete
                 if line.contains("JuliaLab: PROJECT_ACTIVATION_COMPLETE") {
+                    debug!("ProcessActor: Detected PROJECT_ACTIVATION_COMPLETE message");
                     let mut suppressed = output_suppressed.lock().await;
                     *suppressed = false;
                     
                     // Emit project activation complete event to notify orchestrator (for frontend)
                     let _ = event_emitter.emit("orchestrator:project-activation-complete", serde_json::json!({})).await;
+                    debug!("ProcessActor: Emitted orchestrator:project-activation-complete event");
                     
                     // Send project activation complete signal via channel to ProcessActor
                     let sender_guard = project_activation_complete_sender.lock().await;
                     if let Some(sender) = sender_guard.as_ref() {
+                        debug!("ProcessActor: Sending PROJECT_ACTIVATION_COMPLETE signal via channel");
                         let _ = sender.send(());
+                        debug!("ProcessActor: PROJECT_ACTIVATION_COMPLETE signal sent");
+                    } else {
+                        debug!("ProcessActor: WARNING - project_activation_complete_sender is None!");
                     }
                 }
                 
-                // Emit detailed output event (includes filtered messages for StartupModal)
-                // This bypasses filters and shows all messages in the detailed terminal
                 let _ = event_emitter.emit(
                     "julia:output-detailed",
                     serde_json::to_value(vec![crate::messages::StreamOutput {
@@ -360,6 +364,9 @@ pub fn start_stderr_monitoring(
                             .as_millis() as u64,
                     }]).unwrap_or_default(),
                 ).await;
+                
+                // Emit detailed output event (includes filtered messages for StartupModal)
+                // This bypasses filters and shows all messages in the detailed terminal
                 
                 continue;
             }
@@ -378,6 +385,19 @@ pub fn start_stderr_monitoring(
                 }
                 // Don't emit to terminal when notebook cell is executing - output will be sent via notebook events
                 continue;
+            }
+            
+            // --- Safety Net: Revise.jl Type Redefinition Error ---
+            // Revise.jl cannot reload changed struct definitions and throws this error.
+            if line.contains("invalid redefinition of constant") {
+                if let Err(e) = event_emitter.emit(
+                    "julia:revise-redefinition-error",
+                    serde_json::json!({
+                        "message": line.clone()
+                    })
+                ).await {
+                    error!("ProcessActor: Failed to emit julia:revise-redefinition-error: {}", e);
+                }
             }
             
             // Emit detailed output event for all messages (even if filtered for main terminal)

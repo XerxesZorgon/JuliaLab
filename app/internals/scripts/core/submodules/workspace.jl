@@ -3,8 +3,8 @@
 # Get workspace variables from Main module
 function get_workspace_variables()
     try
-        variables = Dict{String, Any}()
-        
+        variables = Dict{String,Any}()
+
         # Get all names in Main module
         # CRITICAL: In Julia 1.12, we must use Base.eval() to execute names() in Main scope
         # Direct call to names() doesn't see variables created by Base.include_string()
@@ -16,15 +16,15 @@ function get_workspace_variables()
             println(stderr, "Warning: Base.eval() failed, using direct names() call: $e")
             names(Main, all=true, imported=false)
         end
-        
+
         # In Julia 1.12, variables created by Base.include_string() may not appear in names()
         # but are accessible via Base.eval(). We need to also try to discover variables
         # by attempting to eval common variable names or by using other discovery methods.
         # For now, we'll process names() first, then add a fallback to try common names.
-        
+
         # Track which names we've already processed
         processed_names = Set{Symbol}()
-        
+
         # Built-in modules and standard names to filter out
         builtin_names = Set([
             :Base, :Core, :Main, :InteractiveUtils, :REPL, :Pkg,
@@ -34,10 +34,10 @@ function get_workspace_variables()
             # Filter out functions we've defined in Main
             :should_filter_plot_data, :setup_display_system, :can_display_result, :is_table_like
         ])
-        
+
         for name in all_names
             name_str = string(name)
-            
+
             # Filter out Compute42 internal variables and Julia internals
             # All Compute42 internal variables are prefixed with JJ_ for easy filtering
             if startswith(name_str, "#") ||              # Julia compiler internals
@@ -48,7 +48,7 @@ function get_workspace_variables()
                name in builtin_names                     # Built-in modules and functions
                 continue
             end
-            
+
             # Try to access the variable - use eval since isdefined() may not work in Julia 1.12
             # Variables created by Base.include_string may not be visible to isdefined() but are accessible via eval
             value = nothing
@@ -69,39 +69,39 @@ function get_workspace_variables()
                     continue
                 end
             end
-            
+
             if !var_accessible || value === nothing
                 continue
             end
-            
+
             try
-                
+
                 # Skip modules, functions, and types
                 if isa(value, Module)
                     continue
                 end
-                
+
                 # Skip all functions (they're not data variables)
                 if isa(value, Function)
                     continue
                 end
-                
+
                 # Skip type definitions (DataType, UnionAll, etc.)
                 if isa(value, Type)
                     continue
                 end
-                
+
                 # Get type information
                 value_type = typeof(value)
                 type_str = string(value_type)
-                
+
                 # Get value string with smart truncation based on type
                 value_str = nothing  # Will be nothing for large variables
                 summary_str = ""
                 needs_fetch = false  # Flag if full value needs separate fetch
                 is_dataframe = false
                 column_names = nothing
-                
+
                 try
                     # Check if it's a DataFrame (requires DataFrames.jl to be loaded)
                     if type_str == "DataFrame" || occursin("DataFrame", type_str)
@@ -112,7 +112,7 @@ function get_workspace_variables()
                             ncols = size(value, 2)
                             column_names = string.(names(value))
                             summary_str = "$(nrows)×$(ncols) DataFrame"
-                            
+
                             # For small DataFrames, include the full value
                             if nrows <= 20 && ncols <= 10
                                 value_str = string(value)
@@ -128,7 +128,7 @@ function get_workspace_variables()
                             value_str = nothing
                             needs_fetch = true
                         end
-                    # For large arrays/matrices, show dimensions only in summary
+                        # For large arrays/matrices, show dimensions only in summary
                     elseif isa(value, AbstractArray)
                         # Try to get dimensions, with fallback for types that don't support size()
                         dims = try
@@ -144,14 +144,14 @@ function get_workspace_variables()
                                 nothing
                             end
                         end
-                        
+
                         ndims_val = try
                             ndims(value)
                         catch e
                             # If ndims fails, assume 1D if we have a length
                             dims !== nothing && length(dims) == 1 ? 1 : 0
                         end
-                        
+
                         # Only include full values for small arrays
                         if dims === nothing
                             # Couldn't get dimensions - use type name only
@@ -205,19 +205,19 @@ function get_workspace_variables()
                         needs_fetch = true
                     end
                 end
-                
+
                 # Truncate summary if needed
                 if length(summary_str) > 200
                     summary_str = summary_str[1:200] * "..."
                 end
-                
+
                 # Check if expandable (arrays, dicts, structs, dataframes) - with error handling
                 is_expandable = false
                 is_array = false
                 is_dict = false
                 is_struct = false
                 element_count = nothing
-                
+
                 try
                     if is_dataframe
                         is_expandable = true
@@ -251,7 +251,7 @@ function get_workspace_variables()
                     # If we can't determine expandability, assume it's not expandable
                     is_expandable = false
                 end
-                
+
                 # Create variable entry
                 var_entry = Dict(
                     "name" => name_str,
@@ -265,17 +265,17 @@ function get_workspace_variables()
                     "summary" => summary_str,    # Short summary for list view
                     "needs_fetch" => needs_fetch  # Whether full value needs separate request
                 )
-                
+
                 # Add column names for DataFrames
                 if is_dataframe && column_names !== nothing
                     var_entry["column_names"] = column_names
                 end
-                
+
                 # Only include value if it's available (small variables)
                 if value_str !== nothing
                     var_entry["value"] = value_str
                 end
-                
+
                 variables[name_str] = var_entry
             catch e
                 # Skip variables that cause errors during inspection
@@ -283,11 +283,11 @@ function get_workspace_variables()
                 continue
             end
         end
-        
+
         return variables
     catch e
         println(stderr, "Error getting workspace variables: ", sprint(showerror, e))
-        return Dict{String, Any}()
+        return Dict{String,Any}()
     end
 end
 
@@ -296,10 +296,10 @@ function handle_get_workspace_variables(data)
     try
         # Extract required fields using new JSON utilities
         id = extract_required_string(data, "id")
-        
+
         # Get workspace variables
         variables = get_workspace_variables()
-        
+
         # Send response back to Rust
         response = Dict(
             "WorkspaceVariables" => Dict(
@@ -308,20 +308,20 @@ function handle_get_workspace_variables(data)
             )
         )
         send_message_to_backend(response)
-        
+
     catch e
         println(stderr, "Error handling get workspace variables: ", sprint(showerror, e))
-        
+
         # Send error response (with safe field extraction)
         id = extract_optional_string(data, "id")
         if id === nothing
             id = "unknown"
         end
-        
+
         response = Dict(
             "WorkspaceVariables" => Dict(
                 "id" => id,
-                "variables" => Dict{String, Any}()
+                "variables" => Dict{String,Any}()
             )
         )
         send_message_to_backend(response)
@@ -334,9 +334,9 @@ function get_variable_value(var_name::String)
         if !isdefined(Main, Symbol(var_name))
             return nothing
         end
-        
+
         value = getfield(Main, Symbol(var_name))
-        
+
         # Get the full value representation
         value_str = try
             repr(value)
@@ -347,13 +347,13 @@ function get_variable_value(var_name::String)
                 "<error getting value: $e2>"
             end
         end
-        
+
         # Truncate extremely large values (safety limit)
         max_length = 100000  # 100KB limit
         if length(value_str) > max_length
             value_str = value_str[1:max_length] * "... [truncated - too large]"
         end
-        
+
         return value_str
     catch e
         println(stderr, "Error getting variable value for $var_name: ", sprint(showerror, e))
@@ -367,10 +367,10 @@ function handle_get_variable_value(data)
         # Extract required fields using new JSON utilities
         id = extract_required_string(data, "id")
         var_name = extract_required_string(data, "variable_name")
-        
+
         # Get the variable's full value
         value = get_variable_value(var_name)
-        
+
         # Send response back to Rust
         response = Dict(
             "VariableValue" => Dict(
@@ -380,10 +380,10 @@ function handle_get_variable_value(data)
             )
         )
         send_message_to_backend(response)
-        
+
     catch e
         println(stderr, "Error handling get variable value: ", sprint(showerror, e))
-        
+
         # Send error response (with safe field extraction)
         id = extract_optional_string(data, "id")
         if id === nothing
@@ -393,7 +393,7 @@ function handle_get_variable_value(data)
         if var_name === nothing
             var_name = "unknown"
         end
-        
+
         response = Dict(
             "VariableValue" => Dict(
                 "id" => id,
@@ -402,6 +402,169 @@ function handle_get_variable_value(data)
             )
         )
         send_message_to_backend(response)
+    end
+end
+
+# Handle GetVariableChunk request (Pagination)
+function handle_get_variable_chunk(data)
+    try
+        id = extract_required_string(data, "id")
+        var_name = extract_required_string(data, "variable_name")
+        row_start = extract_optional_int(data, "row_start")
+        row_start = (row_start === nothing) ? 1 : row_start
+        row_count = extract_optional_int(data, "row_count")
+        row_count = (row_count === nothing) ? 100 : row_count
+        col_start = extract_optional_int(data, "col_start")
+        col_start = (col_start === nothing) ? 1 : col_start
+        col_count = extract_optional_int(data, "col_count")
+        col_count = (col_count === nothing) ? 0 : col_count
+
+        chunk_data, total_rows, total_cols = get_variable_chunk(var_name, row_start, row_count, col_start, col_count)
+
+        response = Dict(
+            "VariableChunk" => Dict(
+                "id" => id,
+                "variable_name" => var_name,
+                "data" => chunk_data,
+                "total_rows" => total_rows,
+                "total_cols" => total_cols
+            )
+        )
+        send_message_to_backend(response)
+    catch e
+        println(stderr, "Error handling get variable chunk: ", sprint(showerror, e))
+        id = extract_optional_string(data, "id")
+        var_name = extract_optional_string(data, "variable_name")
+        response = Dict(
+            "VariableChunk" => Dict(
+                "id" => (id === nothing ? "unknown" : id),
+                "variable_name" => (var_name === nothing ? "unknown" : var_name),
+                "data" => nothing,
+                "total_rows" => 0,
+                "total_cols" => 0
+            )
+        )
+        send_message_to_backend(response)
+    end
+end
+
+function get_variable_chunk(var_name::String, row_start::Int, row_count::Int, col_start::Int, col_count::Int)
+    try
+        if !isdefined(Main, Symbol(var_name))
+            return nothing, 0, 0
+        end
+        val = Base.eval(Main, Symbol(var_name))
+
+        total_rows = 0
+        total_cols = 0
+        chunk_data = nothing
+
+        # Type detection
+        type_str = string(typeof(val))
+        is_df = type_str == "DataFrame" || occursin("DataFrame", type_str)
+
+        if is_df
+            total_rows = size(val, 1)
+            total_cols = size(val, 2)
+
+            r_end = min(row_start + row_count - 1, total_rows)
+            c_end = col_count > 0 ? min(col_start + col_count - 1, total_cols) : total_cols
+
+            if row_start > total_rows || col_start > total_cols
+                chunk_data = []
+            else
+                sub = val[row_start:r_end, col_start:c_end]
+                # Convert to rows
+                chunk_data = []
+                # Include __row_index__ for the frontend
+                colnames = names(sub)
+                for r in 1:size(sub, 1)
+                    row_dict = Dict{String,Any}("__row_index__" => row_start + r - 1)
+                    for (i, c) in enumerate(colnames)
+                        row_dict[string(c)] = sub[r, i]
+                    end
+                    push!(chunk_data, row_dict)
+                end
+            end
+        elseif isa(val, AbstractArray)
+            total_rows = size(val, 1)
+            total_cols = ndims(val) >= 2 ? size(val, 2) : 1
+
+            r_end = min(row_start + row_count - 1, total_rows)
+
+            if row_start > total_rows
+                chunk_data = []
+            else
+                if ndims(val) == 1
+                    sub = val[row_start:r_end]
+                    chunk_data = [Dict("__row_index__" => row_start + i - 1, "Value" => x) for (i, x) in enumerate(sub)]
+                else
+                    c_end = col_count > 0 ? min(col_start + col_count - 1, total_cols) : total_cols
+                    sub = val[row_start:r_end, col_start:c_end]
+                    chunk_data = []
+                    for r in 1:size(sub, 1)
+                        row_dict = Dict{String,Any}("__row_index__" => row_start + r - 1)
+                        for c in 1:size(sub, 2)
+                            row_dict["Col $c"] = sub[r, c]
+                        end
+                        push!(chunk_data, row_dict)
+                    end
+                end
+            end
+        else
+            # Not a paginatable type
+            return nothing, 0, 0
+        end
+
+        return chunk_data, total_rows, total_cols
+    catch e
+        rethrow(e)
+    end
+end
+
+# Method Browser: introspect all methods of a Julia function
+function browse_methods(func_name::String)
+    try
+        func = Base.eval(Main, Meta.parse(func_name))
+        if !isa(func, Function) && !isa(func, Type)
+            send_message_to_backend(Dict("MethodInfo" => Dict(
+                "id" => func_name,
+                "methods" => [],
+                "error" => "'$(func_name)' is not a function"
+            )))
+            return
+        end
+
+        ms = methods(func)
+        result = []
+        for m in ms
+            file_str = string(m.file)
+            # Resolve full path if possible
+            full_path = try
+                src = Base.find_source_file(file_str)
+                src !== nothing ? src : file_str
+            catch
+                file_str
+            end
+            push!(result, Dict{String,Any}(
+                "signature" => string(m),
+                "file"      => full_path,
+                "line"      => m.line,
+                "module"    => string(m.module),
+                "nargs"     => m.nargs - 1,
+            ))
+        end
+
+        send_message_to_backend(Dict("MethodInfo" => Dict(
+            "id"      => func_name,
+            "methods" => result
+        )))
+    catch e
+        send_message_to_backend(Dict("MethodInfo" => Dict(
+            "id"      => func_name,
+            "methods" => [],
+            "error"   => sprint(showerror, e)
+        )))
     end
 end
 

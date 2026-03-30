@@ -101,12 +101,12 @@ const projectPathShort = computed(() => {
 <style scoped>
 .file-tree-toolbar {
   padding: 1px 8px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--jl-border);
   flex-shrink: 0;
 }
 
 .project-path {
-  color: #ccc;
+  color: var(--jl-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -3,7 +3,7 @@
 
 use crate::services::events::EventService;
 use actix::prelude::*;
-use log::{debug, error};
+use log::{debug, error, trace};
 use std::io::BufRead;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -318,7 +318,7 @@ pub async fn connect_from_julia_pipe(state: &State, from_julia_pipe: String) -> 
     let from_julia_read_stream = state.from_julia_read_stream.clone();
     let from_julia_read_stream_for_reader = state.from_julia_read_stream.clone();
     let event_manager = state.event_manager.clone();
-    let current_request_clone = state.current_request.clone();
+    let pending_requests_clone = state.pending_requests.clone();
     let process_actor_for_reader = {
         let process_actor_guard = state.process_actor.lock().await;
         process_actor_guard.clone()
@@ -404,7 +404,7 @@ pub async fn connect_from_julia_pipe(state: &State, from_julia_pipe: String) -> 
             // Start the plot data reader after connection is established (only once)
             tokio::spawn(async move {
                 debug!("[CommunicationActor::Connection] Starting plot data reader after connection");
-                read_from_julia_messages(&from_julia_read_stream_for_reader, &event_manager, &current_request_clone, plot_actor, process_actor_for_reader).await;
+                read_from_julia_messages(&from_julia_read_stream_for_reader, &event_manager, &pending_requests_clone, plot_actor, process_actor_for_reader).await;
             });
             
             Ok(())
@@ -604,7 +604,7 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
                 // Start the from_julia message reader after connection is established (only once)
                 let from_julia_read_stream = state.from_julia_read_stream.clone();
                 let event_manager = state.event_manager.clone();
-                let current_request_clone = state.current_request.clone();
+                let pending_requests_clone = state.pending_requests.clone();
                 let process_actor_for_reader = {
                     let process_actor_guard = state.process_actor.lock().await;
                     process_actor_guard.clone()
@@ -617,7 +617,7 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
                 // For now, just spawn - we'll track this better if needed
                 tokio::spawn(async move {
                     debug!("[CommunicationActor::Connection] Starting from_julia message reader after connection");
-                    read_from_julia_messages(&from_julia_read_stream, &event_manager, &current_request_clone, plot_actor, process_actor_for_reader).await;
+                    read_from_julia_messages(&from_julia_read_stream, &event_manager, &pending_requests_clone, plot_actor, process_actor_for_reader).await;
                 });
             }
             Ok(Err(e)) => {
@@ -662,7 +662,7 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
 async fn read_from_julia_messages(
     from_julia_read_stream: &Arc<Mutex<Option<LocalSocketStream>>>,
     event_manager: &EventService,
-    current_request: &Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+    pending_requests: &Arc<Mutex<std::collections::HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
     plot_actor: Option<Addr<crate::actors::PlotActor>>,
     process_actor: Option<Addr<crate::actors::ProcessActor>>,
 ) {
@@ -705,7 +705,7 @@ async fn read_from_julia_messages(
                     }
 
                     if !buffer.trim().is_empty() {
-                        debug!(
+                        trace!(
                             "[CommunicationActor::Connection] Received message from Julia (size: {} bytes)",
                             buffer.len()
                         );
@@ -713,8 +713,8 @@ async fn read_from_julia_messages(
                         // Parse and handle the message
                         match serde_json::from_str::<crate::messages::JuliaMessage>(buffer.trim()) {
                             Ok(message) => {
-                                debug!("[CommunicationActor::Connection] Successfully parsed message from Julia");
-                                debug!(
+                                trace!("[CommunicationActor::Connection] Successfully parsed message from Julia");
+                                trace!(
                                     "[CommunicationActor::Connection] Message type: {:?}",
                                     std::mem::discriminant(&message)
                                 );
@@ -726,8 +726,8 @@ async fn read_from_julia_messages(
                                     process_actor.clone(),
                                 );
                                 
-                                // Pass the actual current_request so responses can be matched with pending requests
-                                if let Err(e) = handler.handle_julia_message(&message, current_request).await {
+                                // Pass the pending_requests so responses can be matched with pending requests
+                                if let Err(e) = handler.handle_julia_message(&message, pending_requests).await {
                                     error!("[CommunicationActor::Connection] Failed to handle message from Julia: {}", e);
                                 }
                             }

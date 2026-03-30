@@ -51,6 +51,7 @@ impl StartupPhase {
             (StartupPhase::StartingJuliaProcess, StartupPhase::StartingLsp) => true,
             (StartupPhase::StartingJuliaProcess, StartupPhase::Completed) => true,
             (StartupPhase::ActivatingProject, StartupPhase::StartingLsp) => true,
+            (StartupPhase::ActivatingProject, StartupPhase::Completed) => true,
             (StartupPhase::StartingLsp, StartupPhase::WaitingForLspReady) => true,
             (StartupPhase::WaitingForLspReady, StartupPhase::Completed) => true,
             // Allow transitions from Completed back to project activation phases (for project switching)

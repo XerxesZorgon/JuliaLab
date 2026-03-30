@@ -2,16 +2,17 @@
 // Handles code execution requests and responses
 
 use crate::services::base::file_utils::convert_path_for_julia;
-use log::{debug, error};
+use log::{debug, error, trace};
 use uuid::Uuid;
 
 use super::state::State;
 
 /// Get the current busy status
 pub async fn is_busy(state: &State) -> bool {
-    // We'll track this in state if needed, for now check if there's a current request
-    let current_request_guard = state.current_request.lock().await;
-    current_request_guard.is_some()
+    // Check if there are any pending requests that should show as busy
+    // Requests with suppress_busy_events=true have their busy flag set to false
+    let pending_requests_guard = state.pending_requests.lock().await;
+    pending_requests_guard.values().any(|(_, should_show_busy)| *should_show_busy)
 }
 
 /// Execute code with Julia
@@ -290,11 +291,11 @@ async fn execute_single_request(
     };
 
     // Send code execution request
-    debug!(
+    trace!(
         "[CommunicationActor::Execution] Sending code execution request with ID: {}",
         request_id
     );
-    debug!(
+    trace!(
         "[CommunicationActor::Execution] Execution type: {:?}",
         execution_type
     );
@@ -313,16 +314,17 @@ async fn execute_single_request(
     // Create a channel for the response
     let (tx, rx) = tokio::sync::oneshot::channel::<crate::messages::JuliaMessage>();
 
-    // Store the current request
-    debug!(
-        "[CommunicationActor::Execution] Setting current request for ID: {}",
+    // Store the pending request with its busy flag
+    trace!(
+        "[CommunicationActor::Execution] Adding pending request for ID: {}",
         request_id
     );
     {
-        let mut current_request_guard = state.current_request.lock().await;
-        *current_request_guard = Some((request_id.clone(), tx));
+        let mut pending_requests_guard = state.pending_requests.lock().await;
+        let should_show_busy = !suppress_busy_events;
+        pending_requests_guard.insert(request_id.clone(), (tx, should_show_busy));
     } // Release the lock here
-    debug!("[CommunicationActor::Execution] Current request set, lock released");
+    trace!("[CommunicationActor::Execution] Pending request added, lock released");
 
     // Send the message
     let message_sender_guard = state.message_sender.lock().await;
@@ -334,7 +336,7 @@ async fn execute_single_request(
     } else {
         return Err("Message sender not initialized".to_string());
     }
-    debug!("[CommunicationActor::Execution] Message sent, waiting for response...");
+    trace!("[CommunicationActor::Execution] Message sent, waiting for response...");
 
     // Wait for ExecutionComplete response (no timeout - use heartbeat for health checks)
     let result = match rx.await {
@@ -344,7 +346,8 @@ async fn execute_single_request(
                     // For FileExecution and NotebookCell, trigger workspace variables retrieval in background
                     let should_get_variables = matches!(
                         exec_type,
-                        crate::messages::ExecutionType::FileExecution
+                        crate::messages::ExecutionType::ReplExecution
+                        | crate::messages::ExecutionType::FileExecution
                         | crate::messages::ExecutionType::NotebookCell { .. }
                     );
                     
@@ -385,6 +388,12 @@ async fn execute_single_request(
                         }
                     }
                     
+                    // Remove the request from pending requests
+                    {
+                        let mut pending_requests_guard = state.pending_requests.lock().await;
+                        pending_requests_guard.remove(&request_id);
+                    }
+                    
                     Ok(response)
                 } else {
                     // Emit backend-done event even on failure (unless suppressed)
@@ -393,13 +402,34 @@ async fn execute_single_request(
                             error!("[CommunicationActor::Execution] Failed to emit backend-done event: {}", e);
                         }
                     }
+                    
+                    // Remove the request from pending requests
+                    {
+                        let mut pending_requests_guard = state.pending_requests.lock().await;
+                        pending_requests_guard.remove(&request_id);
+                    }
+                    
                     Err(error.clone().unwrap_or_else(|| "Unknown error".to_string()))
                 }
             } else {
+                // Remove the request from pending requests
+                {
+                    let mut pending_requests_guard = state.pending_requests.lock().await;
+                    pending_requests_guard.remove(&request_id);
+                }
+                
                 Err("Received unexpected response type".to_string())
             }
         }
-        Err(_) => Err("Failed to receive response".to_string()),
+        Err(_) => {
+            // Remove the request from pending requests
+            {
+                let mut pending_requests_guard = state.pending_requests.lock().await;
+                pending_requests_guard.remove(&request_id);
+            }
+            
+            Err("Failed to receive response".to_string())
+        }
     };
 
     // Add a longer delay to allow stdout to be fully processed and displayed

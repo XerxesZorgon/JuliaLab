@@ -35,6 +35,9 @@ end
 
 # Setup display system immediately after communication is established
 setup_display_system()
+if isdefined(Main, :setup_plotting)
+    setup_plotting()
+end
 
 println(stderr, "JuliaLab: ALL_PIPES_READY")
 

@@ -3,6 +3,7 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tokio::process::Command;
 use tokio::sync::Mutex;
+use tokio::time::{sleep, Duration};
 
 use super::state::ProcessState;
 use super::session::PersistentJuliaSession;
@@ -23,11 +24,11 @@ pub async fn start_julia_with_communication(
     // Generate pipe names
     let (to_julia_pipe, from_julia_pipe) = state.generate_pipe_names();
 
-    // Start Julia process without sysimage for now
+    // Start Julia process (with sysimage if available)
     try_start_julia_without_sysimage(state, event_emitter, julia_session, &to_julia_pipe, &from_julia_pipe).await
 }
 
-/// Try to start Julia process without sysimage
+/// Try to start Julia process (loads sysimage if available)
 async fn try_start_julia_without_sysimage(
     state: Arc<ProcessState>,
     event_emitter: Arc<dyn EventEmitter>,
@@ -69,13 +70,58 @@ async fn try_start_julia_without_sysimage(
     
     command.env("JULIA_DEPOT_PATH", julia_depot_path.to_string_lossy().to_string());
     command.env("JULIA_PROJECT", julia_project_path.to_string_lossy().to_string());
+    
+    // SECURITY: Ensure that sensitive CLI variables like GOOGLE_API_KEY are stripped from
+    // the inherited environment. This prevents them from being accidentally logged by Julia
+    // stacktraces or if the ProcessActor outputs raw julia ENV dictionaries.
+    command.env_remove("GOOGLE_API_KEY");
+    command.env_remove("GEMINI_API_KEY");
 
     // Try to find and activate Julia project environment
     if let Some(project_path) = state.find_julia_project() {
         command.arg(format!("--project={}", project_path.to_string_lossy()));
     }
 
-    // Add basic Julia arguments (no sysimage)
+    let sysimage_extension = if cfg!(target_os = "windows") {
+        "dll"
+    } else if cfg!(target_os = "macos") {
+        "dylib"
+    } else {
+        "so"
+    };
+    let sysimage_name = format!("julialab.{}", sysimage_extension);
+
+    // Check for custom sysimage and load it if available
+    let mut sysimage_path = app_data_dir
+        .join("org.julialab.ide")
+        .join(&sysimage_name);
+    
+    if !sysimage_path.exists() {
+        // Try searching in bundled resources (for production)
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let resource_sysimage = exe_dir.join("resources").join(&sysimage_name);
+                if resource_sysimage.exists() {
+                    sysimage_path = resource_sysimage;
+                } else {
+                    // Try without "resources" subfolder (some Tauri versions/configs)
+                    let alt_resource = exe_dir.join(&sysimage_name);
+                    if alt_resource.exists() {
+                        sysimage_path = alt_resource;
+                    }
+                }
+            }
+        }
+    }
+    
+    if sysimage_path.exists() {
+        command.arg(format!("--sysimage={}", sysimage_path.to_string_lossy()));
+        log::info!("ProcessActor: Loading sysimage from {:?}", sysimage_path);
+    } else {
+        log::info!("ProcessActor: No sysimage found at {:?}, starting without it", sysimage_path);
+    }
+
+    // Add basic Julia arguments
     command
         .arg("--startup-file=no")
         .arg("-t1")
@@ -144,30 +190,58 @@ async fn try_start_julia_without_sysimage(
     };
     setup_result?;
 
-    // JuliaLab: auto-load Revise.jl per constitution requirement
-    let revise_loaded = {
-        let mut session_guard = julia_session.lock().await;
-        if let Some(ref mut session) = *session_guard {
-            if let Err(e) = session.execute_code("using Revise".to_string()).await {
-                log::warn!("Revise.jl not found, attempting auto-install: {}", e);
-                if let Err(install_err) = session.execute_code(
-                    r#"import Pkg; Pkg.add("Revise"); using Revise"#.to_string()
-                ).await {
-                    log::error!("ProcessActor: Failed to install Revise.jl: {}", install_err);
-                    false
-                } else {
-                    true
+    // JuliaLab: auto-load Revise asynchronously so startup is not blocked.
+    let revise_session = julia_session.clone();
+    let revise_emitter = event_emitter.clone();
+    tokio::spawn(async move {
+        sleep(Duration::from_millis(500)).await;
+
+        let revise_loaded = {
+            let mut session_guard = revise_session.lock().await;
+            if let Some(ref mut session) = *session_guard {
+                match session.execute_code("using Revise".to_string()).await {
+                    Ok(_) => {
+                        log::info!("ProcessActor: Revise loaded asynchronously");
+                        true
+                    }
+                    Err(e) => {
+                        log::warn!("ProcessActor: Async Revise load failed: {}", e);
+                        false
+                    }
                 }
             } else {
-                true
+                false
             }
-        } else {
-            false
-        }
-    };
+        };
 
-    // Notify frontend of Revise status
-    let _ = event_emitter.emit("julia:revise-status", serde_json::json!(revise_loaded)).await;
+        let _ = revise_emitter
+            .emit("julia:revise-status", serde_json::json!(revise_loaded))
+            .await;
+
+        // JuliaLab: auto-load Plots asynchronously as well so REPL plotting works
+        // without requiring users to manually run `using Plots` each session.
+        let plots_loaded = {
+            let mut session_guard = revise_session.lock().await;
+            if let Some(ref mut session) = *session_guard {
+                match session.execute_code("using Plots".to_string()).await {
+                    Ok(_) => {
+                        log::info!("ProcessActor: Plots loaded asynchronously");
+                        true
+                    }
+                    Err(e) => {
+                        log::warn!("ProcessActor: Async Plots load failed: {}", e);
+                        false
+                    }
+                }
+            } else {
+                false
+            }
+        };
+
+        if !plots_loaded {
+            log::warn!("ProcessActor: Plot commands may require manual `using Plots`");
+        }
+    });
 
     Ok(())
 }

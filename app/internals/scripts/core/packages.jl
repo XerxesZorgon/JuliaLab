@@ -4,59 +4,60 @@
 
 try
     using Pkg
-    
+
     # Switch to default environment for JuliaLab core packages
     Pkg.activate()
-    
+
     # List of required packages for JuliaLab core functionality
+    # Note: CairoMakie removed from core to reduce startup time (9+ min → <15 sec)
+    # Users can install plotting packages on-demand via Package Manager
     required_packages = [
         "JuliaInterpreter",
         "JSON",
         "Revise",
         "LanguageServer",
         "JuliaFormatter",
-        "CairoMakie",
-        "Debugger"
+        "Debugger",
+        "PackageCompiler"  # For creating custom system images (optional)
     ]
-    
+
     # Check which packages are already installed in default environment
     installed_packages = keys(Pkg.project().dependencies)
     packages_to_install = String[]
-    
+
     for pkg in required_packages
         if !(pkg in installed_packages)
             push!(packages_to_install, pkg)
         end
     end
-    
+
     # Only install missing packages
     if !isempty(packages_to_install)
         println(stderr, "JuliaLab: Installing core packages: ", join(packages_to_install, ", "))
         Pkg.add(packages_to_install)
     end
-    
-    # Check if instantiate is needed for default environment
-    manifest_file = joinpath(Pkg.project().path, "Manifest.toml")
-    needs_instantiate = false
-    
-    if !isfile(manifest_file)
-        println(stderr, "JuliaLab: Default environment Manifest.toml not found, running instantiate...")
-        needs_instantiate = true
-    else
-        # Check if dependencies are properly installed
-        try
-            Pkg.status()
-        catch e
-            println(stderr, "JuliaLab: Default environment package status check failed, running instantiate...")
-            needs_instantiate = true
+
+    # Only instantiate if Manifest.toml has changed since last run
+    let
+        manifest_path = joinpath(dirname(Base.active_project()), "Manifest.toml")
+        stamp_path = joinpath(ENV["JULIALAB_DATA_DIR"], ".manifest_stamp")
+        
+        needs_instantiate = if isfile(manifest_path) && isfile(stamp_path)
+            mtime(manifest_path) > read(stamp_path, Float64)
+        else
+            true  # No stamp yet, or no manifest — run instantiate
         end
-    end
-    
-    if needs_instantiate
-        Pkg.instantiate()
-        println(stderr, "JuliaLab: Core packages installed successfully")
-    else
-        println(stderr, "JuliaLab: Core packages already up to date")
+
+        if needs_instantiate
+            @info "JuliaLab: Manifest changed, running Pkg.instantiate()..."
+            Pkg.instantiate()
+            # Write new stamp
+            open(stamp_path, "w") do f
+                write(f, mtime(manifest_path))
+            end
+        else
+            @info "JuliaLab: Manifest unchanged, skipping Pkg.instantiate()"
+        end
     end
 catch e
     # Only print errors, not success messages
@@ -71,18 +72,18 @@ try
     using UUIDs
     using JuliaInterpreter
     using Revise
-    
+
     # Configure Revise for automatic tracking
     # Revise automatically tracks packages loaded with 'using' or 'import'
     # when 'using Revise' is called at startup (which we just did above)
     # This enables automatic reloading of modules when source files change
     # For local projects, Revise.track() will be called during project activation
     # to track the project's src/ directory
-    
+
     # Helper function to manually reload a package with Revise
     # Usage: reload_package(Main.titanic) or reload_package(:titanic)
     if !@isdefined(reload_package)
-        function reload_package(pkg::Union{Symbol, Module})
+        function reload_package(pkg::Union{Symbol,Module})
             try
                 if isa(pkg, Symbol)
                     # println("Revise: Attempting to reload package: ", pkg)
@@ -110,7 +111,7 @@ try
                             catch e
                                 # println("Revise: Could not check tracking status: ", e)
                             end
-                            
+
                             # Try to reload using Revise
                             try
                                 # println("Revise: Calling revise() on module '", pkg, "'...")
@@ -180,10 +181,10 @@ try
             end
         end
     end
-    
+
     # Helper function to check Revise tracking status
     if !@isdefined(check_revise_tracking)
-        function check_revise_tracking(pkg::Union{Symbol, Module, String})
+        function check_revise_tracking(pkg::Union{Symbol,Module,String})
             try
                 # println("Revise: Checking tracking status for: ", pkg)
                 if isa(pkg, String)
@@ -252,10 +253,10 @@ try
             end
         end
     end
-    
+
     # Make JuliaInterpreter functions available in Main immediately
     # Note: These are already available through the using statement, no need to reassign
-    
+
     # Include debugger functionality
     include(joinpath(@__DIR__, "..", "debugger.jl"))
     println(stderr, "JuliaLab: Debugger functionality loaded")

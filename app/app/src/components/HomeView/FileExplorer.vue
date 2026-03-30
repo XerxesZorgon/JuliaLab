@@ -317,7 +317,18 @@ import {
 // defineEmits is a compiler macro, no import needed
 const emit = defineEmits(['open-file', 'project-root-changed']);
 
-const message = useMessage();
+const message = (() => {
+  try {
+    return useMessage();
+  } catch {
+    return {
+      success: (text) => debug(`[HomeView/FileExplorer message.success] ${text}`),
+      error: (text) => error(`[HomeView/FileExplorer message.error] ${text}`),
+      info: (text) => info(`[HomeView/FileExplorer message.info] ${text}`),
+      warning: (text) => warn(`[HomeView/FileExplorer message.warning] ${text}`),
+    };
+  }
+})();
 
 const rootFolder = ref(null);
 const fileTree = ref([]);

@@ -4,17 +4,13 @@
       <!-- Header with Logo -->
       <div class="header-content">
         <div class="logo-container">
-          <span style="display:inline-flex;gap:6px;margin-bottom:12px">
-            <span style="width:14px;height:14px;border-radius:50%;background:#cb3c33;display:inline-block"></span>
-            <span style="width:14px;height:14px;border-radius:50%;background:#9558b2;display:inline-block"></span>
-            <span style="width:14px;height:14px;border-radius:50%;background:#389826;display:inline-block"></span>
-          </span>
+          <img src="/julialab.png" alt="JuliaLab" class="startup-logo" />
         </div>
         <h1 class="app-title">JuliaLab</h1>
         <p class="app-subtitle">Julia Development Environment</p>
         <p class="version-info">v{{ appVersion }}</p>
         <div class="beta-warning">
-          <p>⚠️ Early Preview — Phase 1</p>
+          <p>⚠️ Early Preview — Phase 5</p>
         </div>
         <div v-if="isInitialStartup" class="initial-startup-info">
           <p>
@@ -895,10 +891,12 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
 }
 
-.logo {
-  width: 60px;
-  height: 60px;
+.startup-logo {
+  width: 80px;
+  height: 80px;
   object-fit: contain;
+  border-radius: 16px;
+  margin-bottom: 4px;
 }
 
 .app-title {

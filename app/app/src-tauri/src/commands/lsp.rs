@@ -280,3 +280,38 @@ pub async fn lsp_restart(
         }
     }
 }
+
+/// Start LSP server on-demand (lazy loading)
+/// This is called when the first .jl file is opened
+#[tauri::command]
+pub async fn lsp_start_if_needed(
+    project_path: String,
+    app_state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    use internals::messages::lsp::IsLspRunning;
+    
+    // Check if LSP is already running
+    let is_running = app_state.actor_system.lsp_actor
+        .send(IsLspRunning)
+        .await
+        .map_err(|_| AppError::InternalError("Actor comm failed".to_string()))??;
+    
+    if is_running {
+        debug!("LSP already running, skipping start");
+        return Ok(());
+    }
+    
+    debug!("LSP not running, starting for project: {}", project_path);
+    
+    use internals::messages::lsp::RestartLspServer;
+    match app_state.actor_system.lsp_actor.send(RestartLspServer { project_path }).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
+        Ok(()) => {
+            debug!("LSP started successfully (lazy loading)");
+            Ok(())
+        }
+        Err(e) => {
+            error!("LSP start error: {}", e);
+            Err(AppError::InternalError(e))
+        }
+    }
+}

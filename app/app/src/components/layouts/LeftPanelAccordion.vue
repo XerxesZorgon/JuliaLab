@@ -1,5 +1,5 @@
 <template>
-  <div style="height: 100%; display: flex; flex-direction: column; background-color: #282828">
+  <div style="height: 100%; display: flex; flex-direction: column; background-color: var(--jl-files-panel-bg)">
     <div style="flex-grow: 1; overflow: auto; display: flex; flex-direction: column">
       <n-collapse
         v-model:expanded-names="expandedNames"
@@ -32,32 +32,12 @@
           </div>
         </n-collapse-item>
 
-        <!-- Variables Section -->
-        <n-collapse-item name="variables" title="Variables">
-          <template #header>
-            <div class="accordion-header">
-              <n-icon><CodeOutline /></n-icon>
-              <span class="header-text">Variables</span>
-            </div>
-          </template>
-          <div
-            style="
-              flex-grow: 1;
-              display: flex;
-              flex-direction: column;
-              min-height: 0;
-              height: 100%;
-              overflow: hidden;
-            "
-          >
-            <VariablesPanel :is-debugging="isDebugging" />
-          </div>
-        </n-collapse-item>
+
       </n-collapse>
     </div>
 
     <!-- Environment Info - Always visible at bottom -->
-    <div style="flex-shrink: 0; border-top: 1px solid #444">
+    <div style="flex-shrink: 0; border-top: 1px solid var(--jl-border)">
       <EnvironmentInfo />
     </div>
   </div>
@@ -66,14 +46,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { NCollapse, NCollapseItem, NIcon } from 'naive-ui';
-import { FolderOutline, CodeOutline } from '@vicons/ionicons5';
+import { FolderOutline } from '@vicons/ionicons5';
 import { FileExplorer } from '../FileExplorer';
 import EnvironmentInfo from '../shared/EnvironmentInfo.vue';
-import VariablesPanel from '../HomeView/VariablesPanel.vue';
 import { useAppStore } from '../../store/appStore';
 
 const expandedNames = ref(['explorer']); // Start with only explorer expanded
-const isDebugging = ref(false); // Always false in open-source (no debug functionality)
 
 // Computed property for default expanded names
 const defaultExpandedNames = computed(() => {
@@ -106,18 +84,18 @@ onMounted(async () => {
 
 <style scoped>
 :deep(.n-collapse-item__header) {
-  background-color: #1e1e1e !important;
-  border-bottom: 1px solid #444 !important;
+  background-color: var(--jl-panel-bg-alt) !important;
+  border-bottom: 1px solid var(--jl-border) !important;
   margin: 0 !important;
   padding: 0 12px !important;
 }
 
 :deep(.n-collapse-item__header:hover) {
-  background-color: #252525 !important;
+  background-color: var(--jl-border-light) !important;
 }
 
 :deep(.n-collapse-item__content) {
-  background-color: #282828 !important;
+  background-color: var(--jl-files-panel-bg) !important;
   padding: 0 !important;
 }
 
@@ -153,7 +131,7 @@ onMounted(async () => {
 }
 
 :deep(.n-collapse) {
-  background-color: #282828 !important;
+  background-color: var(--jl-files-panel-bg) !important;
   border: none !important;
   gap: 0 !important;
   display: flex !important;
@@ -204,13 +182,13 @@ onMounted(async () => {
 }
 
 .header-icon {
-  color: #ccc !important; /* Same color as text */
+  color: var(--jl-text-secondary) !important;
   font-size: 14px;
   flex-shrink: 0;
 }
 
 .header-text {
-  color: #ccc;
+  color: var(--jl-text-secondary);
   font-size: 12px;
   font-weight: 500;
   flex: 1;

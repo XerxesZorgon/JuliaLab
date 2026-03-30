@@ -14,6 +14,7 @@ pub mod plot_actor;
 pub mod process_actor;
 pub mod project_actor;
 pub mod state_actor;
+pub mod workspace_actor;
 
 // Re-export all actors for convenience
 pub use communication_actor::*;
@@ -29,3 +30,4 @@ pub use plot_actor::*;
 pub use process_actor::*;
 pub use project_actor::*;
 pub use state_actor::*;
+pub use workspace_actor::*;

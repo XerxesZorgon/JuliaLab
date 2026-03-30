@@ -132,3 +132,12 @@ impl Handler<ShutdownLsp> for LspActorState {
 
 
 
+impl Handler<SetLspProject> for LspActorState {
+    type Result = Result<(), String>;
+    
+    fn handle(&mut self, msg: SetLspProject, _ctx: &mut Context<Self>) -> Self::Result {
+        debug!("LspActor: Setting current project to: {:?}", msg.project_path);
+        self.current_project = Some(msg.project_path);
+        Ok(())
+    }
+}

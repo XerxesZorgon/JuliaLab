@@ -1,7 +1,7 @@
 import { createApp, h, defineComponent } from 'vue';
 import { createPinia } from 'pinia';
 import App from './App.vue';
-import { create, NConfigProvider, darkTheme } from 'naive-ui';
+import { create, NConfigProvider } from 'naive-ui';
 import { themeOverrides } from './theme';
 import hljs from 'highlight.js/lib/core';
 import rust from 'highlight.js/lib/languages/rust';
@@ -16,11 +16,18 @@ import { startOrchestratorEventsBridge } from './services/orchestratorEventsBrid
 
 // JuliaLab theme CSS variables
 import './styles/theme.css';
+import 'golden-layout/dist/css/goldenlayout-base.css';
 
-// General Fonts
-import 'vfonts/Lato.css';
-// Monospace Fonts
-import 'vfonts/FiraCode.css';
+// General Fonts (Local bundled)
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
+
+// Monospace Fonts (Local bundled)
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
+import '@fontsource/ibm-plex-mono/600.css';
 // Ionicons CSS will be imported by the icon components
 
 // Register languages we need
@@ -32,9 +39,10 @@ const pinia = createPinia();
 
 const RootComponent = defineComponent({
   render() {
+    // Use null for light theme (MATLAB-style), can be changed to darkTheme for dark mode
     return h(
       NConfigProvider,
-      { theme: darkTheme, themeOverrides: themeOverrides, hljs: hljs },
+      { theme: null, themeOverrides: themeOverrides, hljs: hljs },
       { default: () => h(App) }
     );
   },
@@ -55,7 +63,7 @@ void debug('Main: Plot store initialized');
 
 app.mount('#app');
 
-window.addEventListener('beforeunload', async () => {});
+window.addEventListener('beforeunload', async () => { });
 
 // Phase 5: start event bridges (plots, LSP, orchestrator)
 void startPlotNavigatorBridge();

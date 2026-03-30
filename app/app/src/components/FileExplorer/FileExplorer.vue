@@ -110,7 +110,19 @@ const emit = defineEmits<{
 // Composables
 // ============================
 
-const message = useMessage();
+const message = (() => {
+  try {
+    return useMessage();
+  } catch {
+    // Fallback for isolated mounts where n-message-provider is not available yet.
+    return {
+      success: (text: string) => debug(`[FileExplorer/message.success] ${text}`),
+      error: (text: string) => error(`[FileExplorer/message.error] ${text}`),
+      info: (text: string) => debug(`[FileExplorer/message.info] ${text}`),
+      warning: (text: string) => debug(`[FileExplorer/message.warning] ${text}`),
+    };
+  }
+})();
 const appStore = useAppStore();
 // terminalStore temporarily removed for debugging
 
@@ -549,7 +561,7 @@ watch(
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #282828;
+  background-color: var(--jl-files-panel-bg);
   min-height: 0;
 }
 

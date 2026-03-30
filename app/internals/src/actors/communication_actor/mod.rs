@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use log::{debug, error};
+use log::{debug, error, trace};
 
 use crate::messages::communication::*;
 use crate::service_traits::CommunicationService as CommunicationServiceTrait;
@@ -90,7 +90,7 @@ impl CommunicationActor {
     /// Execute code
     #[allow(dead_code)]
     async fn execute_code(&mut self, code: String, execution_type: ExecutionType, file_path: Option<String>) -> Result<JuliaMessage, String> {
-        debug!("CommunicationActor: Executing code with type {:?}", execution_type);
+        trace!("CommunicationActor: Executing code with type {:?}", execution_type);
         
         // Check if connected
         if !self.is_connected {
@@ -329,13 +329,13 @@ impl Handler<ExecuteCode> for CommunicationActor {
     type Result = ResponseActFuture<Self, Result<JuliaMessage, String>>;
     
     fn handle(&mut self, msg: ExecuteCode, _ctx: &mut Context<Self>) -> Self::Result {
-        debug!("CommunicationActor: Received ExecuteCode message");
+        trace!("CommunicationActor: Received ExecuteCode message");
         
         let state = self.state.clone();
         let is_connected = self.is_connected;
         Box::pin(
             async move {
-                debug!("CommunicationActor: Executing code");
+                trace!("CommunicationActor: Executing code");
                 
                 // Check if connected
                 if !is_connected {
@@ -382,12 +382,11 @@ impl Handler<GetBackendBusyStatus> for CommunicationActor {
     type Result = ResponseActFuture<Self, Result<bool, String>>;
     
     fn handle(&mut self, _msg: GetBackendBusyStatus, _ctx: &mut Context<Self>) -> Self::Result {
-        // Removed debug logging to avoid cluttering logs with periodic sync requests
-        
         let state = self.state.clone();
         
         Box::pin(async move {
             let is_busy = execution::is_busy(&state).await;
+            debug!("CommunicationActor: GetBackendBusyStatus returning: {}", is_busy);
             Ok(is_busy)
         }.into_actor(self))
     }

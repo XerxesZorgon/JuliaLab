@@ -1,0 +1,111 @@
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_source")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(serialize_with = "serialize_source")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: failed to parse serde attribute
+  | 
+  | #[serde(deserialize_with = "deserialize_source")]
+  | 
+  = note: ts-rs failed to parse this attribute. It will be ignored.
+warning: unused import: `error`
+ --> internals\src\actors\workspace_actor.rs:2:18
+  |
+2 | use log::{debug, error};
+  |                  ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> internals\src\actors\lsp_actor\handlers_documents.rs:41:17
+   |
+41 |             let mut lsp_svc = self.lsp_service.clone();
+   |                 ----^^^^^^^
+   |                 |
+   |                 help: remove this `mut`
+   |
+   = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+  --> internals\src\actors\lsp_actor\handlers_documents.rs:43:17
+   |
+43 |             let mut event_mgr = self.event_manager.clone();
+   |                 ----^^^^^^^^^
+   |                 |
+   |                 help: remove this `mut`
+
+warning: unused variable: `install_actor`
+  --> internals\src\actors\lsp_actor\handlers_documents.rs:42:17
+   |
+42 |             let install_actor = self.installation_actor.clone();
+   |                 ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_install_actor`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `event_mgr`
+  --> internals\src\actors\lsp_actor\handlers_documents.rs:43:17
+   |
+43 |             let mut event_mgr = self.event_manager.clone();
+   |                 ^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_event_mgr`
+
+warning: unused variable: `orch_actor`
+  --> internals\src\actors\lsp_actor\handlers_documents.rs:44:17
+   |
+44 |             let orch_actor = self.orchestrator_actor.clone();
+   |                 ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_orch_actor`
+
+warning: unused variable: `comm_clone`
+  --> internals\src\actors\workspace_actor.rs:34:17
+   |
+34 |             let comm_clone = comm.clone();
+   |                 ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_comm_clone`
+
+warning: unused variable: `fut`
+   --> internals\src\actors\workspace_actor.rs:151:13
+    |
+151 |         let fut = async move {
+    |             ^^^ help: if this is intentional, prefix it with an underscore: `_fut`
+
+warning: field `event_manager` is never read
+  --> internals\src\actors\workspace_actor.rs:12:5
+   |
+11 | pub struct WorkspaceActor {
+   |            -------------- field in this struct
+12 |     event_manager: EventService,
+   |     ^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling julialab v0.1.0 (C:\Users\johnx\Documents\WildPeaches\Projects\JuliaLab\app\app\src-tauri)
+warning: `internals` (lib) generated 9 warnings (run `cargo fix --lib -p internals` to apply 8 suggestions)
+warning: unused import: `tauri::Manager`
+   --> app\src-tauri\src\commands\generic.rs:751:9
+    |
+751 |     use tauri::Manager;
+    |         ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: use of deprecated function `base64::decode`: Use Engine::decode
+   --> app\src-tauri\src\commands\plot.rs:246:27
+    |
+246 |     let decoded = base64::decode(image_data).map_err(|e| {
+    |                           ^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: unused variable: `app_handle`
+   --> app\src-tauri\src\commands\generic.rs:749:5
+    |
+749 |     app_handle: tauri::AppHandle,
+    |     ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_app_handle`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `julialab` (lib) generated 3 warnings (run `cargo fix --lib -p julialab` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.68s

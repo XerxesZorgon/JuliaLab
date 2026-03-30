@@ -41,3 +41,5 @@ app/src-tauri/gen/
 *.ji
 *.jl.cov
 *.jl.mem
+.pkg_stamp
+.manifest_stamp

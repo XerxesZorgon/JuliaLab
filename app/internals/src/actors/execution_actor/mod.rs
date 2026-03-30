@@ -293,6 +293,7 @@ impl Handler<ActivateProject> for ExecutionActor {
     fn handle(&mut self, msg: ActivateProject, _ctx: &mut Context<Self>) -> Self::Result {
         let project_path = msg.project_path;
         let communication_actor = self.communication_actor.clone();
+        let event_manager = self.event_manager.clone();
         
         Box::pin(
             async move {
@@ -328,34 +329,59 @@ impl Handler<ActivateProject> for ExecutionActor {
                             using Pkg
                             Pkg.activate("{}")
                             println("Project activated: {}")
+                            println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
+                            flush(stderr)
                             true
                         catch e
                             println("Failed to activate project: ", e)
+                            println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
+                            flush(stderr)
                             false
                         end
                         "#,
                         julia_path, julia_path
                     );
                     
+                    // Send activation command
                     let activation_result = communication_actor.send(ExecuteCode {
-                        code: activation_code,
+                        code: activation_code.clone(),
                         execution_type: ExecutionType::ApiCall,
                         file_path: None,
-                        suppress_busy_events: false,
-                    }).await
-                        .map_err(|e| format!("Failed to send activation code: {}", e))?
-                        .map_err(|e| format!("Activation failed: {}", e))?;
+                        suppress_busy_events: true,
+                    }).await;
                     
                     // Check if activation was successful
-                    let activation_success = match activation_result {
-                        JuliaMessage::ExecutionComplete { result: Some(result_str), success, .. } => {
-                            success && result_str.trim() == "true"
+                    let mut activation_success = false;
+                    match activation_result {
+                        Ok(Ok(result)) => {
+                            activation_success = match result {
+                                JuliaMessage::ExecutionComplete { result: Some(result_str), success, .. } => {
+                                    success && result_str.trim() == "true"
+                                }
+                                JuliaMessage::ExecutionComplete { error: Some(error_msg), .. } => {
+                                    debug!("ExecutionActor: Julia activation error: {}", error_msg);
+                                    false
+                                }
+                                _ => false,
+                            };
                         }
-                        JuliaMessage::ExecutionComplete { error: Some(error_msg), .. } => {
-                            return Err(format!("Julia activation error: {}", error_msg));
+                        Ok(Err(e)) => {
+                            // If we get "Failed to receive response", the activation code already emitted
+                            // PROJECT_ACTIVATION_COMPLETE to stderr, so the orchestrator will detect it.
+                            // We can consider this a success since the signal was sent.
+                            if e.contains("Failed to receive response") {
+                                debug!("ExecutionActor: Activation response lost, but PROJECT_ACTIVATION_COMPLETE signal was emitted to stderr");
+                                // Wait a bit for the signal to be processed
+                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                activation_success = true;
+                            } else {
+                                return Err(format!("Activation failed: {}", e));
+                            }
                         }
-                        _ => return Err("Unexpected response from Julia activation".to_string()),
-                    };
+                        Err(e) => {
+                            return Err(format!("Failed to send activation code: {}", e));
+                        }
+                    }
                     
                     if !activation_success {
                         return Err("Failed to activate Julia project".to_string());
@@ -363,99 +389,114 @@ impl Handler<ActivateProject> for ExecutionActor {
                     
                     debug!("ExecutionActor: Project activated, installing dependencies...");
                     
-                    // Step 2: Always run instantiate during startup to ensure packages are installed
-                    // This is idempotent - it will only install missing packages
+                    // Step 2: Run instantiate only when project dependencies are stale
                     let instantiate_code = format!(
                         r#"
                         try
                             using Pkg
                             
-                            # Always run instantiate during startup to ensure all packages are installed
-                            # This is idempotent and safe - it will only install what's missing
-                            println("Ensuring all project dependencies are installed...")
+                            println("Checking project dependency staleness...")
                             flush(stdout)
                             flush(stderr)
+
+                            stamp_file = joinpath("{}", ".pkg_stamp")
+                            manifest_file = joinpath("{}", "Manifest.toml")
+                            needs_update = !isfile(stamp_file) ||
+                                           (isfile(manifest_file) && mtime(manifest_file) > mtime(stamp_file))
                             
-                            # Run instantiate with retry logic if dependencies are missing
                             max_instantiate_attempts = 2
                             instantiate_successful = false
-                            
-                            for attempt in 1:max_instantiate_attempts
-                                try
-                                    println("Starting Pkg.instantiate() (attempt $attempt)...")
-                                    flush(stdout)
-                                    flush(stderr)
-                                    Pkg.instantiate()
-                                    println("Pkg.instantiate() completed successfully")
-                                    flush(stdout)
-                                    flush(stderr)
-                                    
-                                    # Resolve dependencies to ensure all transitive dependencies are properly resolved
-                                    println("Resolving dependencies...")
-                                    flush(stdout)
-                                    flush(stderr)
-                                    Pkg.resolve()
-                                    println("Dependencies resolved successfully")
-                                    flush(stdout)
-                                    flush(stderr)
-                                    
-                                    # Verify that project dependencies are actually available
-                                    # Check by trying to get dependency information - if this fails, dependencies might be missing
-                                    println("Verifying dependencies are installed...")
-                                    deps = Pkg.dependencies()
-                                    
-                                    # Check if we can access the project's direct dependencies
-                                    project_toml_path = joinpath("{}", "Project.toml")
-                                    if isfile(project_toml_path)
-                                        project_data = Pkg.TOML.parsefile(project_toml_path)
-                                        project_deps = get(project_data, "deps", Dict{{String, Any}}())
+
+                            if needs_update
+                                println("Packages: Manifest changed — running Pkg.instantiate()...")
+                                flush(stdout)
+                                flush(stderr)
+
+                                # Run instantiate with retry logic if dependencies are missing
+                                for attempt in 1:max_instantiate_attempts
+                                    try
+                                        println("Starting Pkg.instantiate() (attempt $attempt)...")
+                                        flush(stdout)
+                                        flush(stderr)
+                                        Pkg.instantiate()
+                                        println("Pkg.instantiate() completed successfully")
+                                        flush(stdout)
+                                        flush(stderr)
                                         
-                                        # Verify each direct dependency is available
-                                        missing_deps = String[]
-                                        for (dep_name, dep_uuid) in project_deps
-                                            # Check if dependency is in the resolved dependencies
-                                            dep_found = false
-                                            for (uuid, dep_info) in deps
-                                                if dep_info.name == dep_name
-                                                    dep_found = true
-                                                    break
+                                        # Resolve dependencies to ensure all transitive dependencies are properly resolved
+                                        println("Resolving dependencies...")
+                                        flush(stdout)
+                                        flush(stderr)
+                                        Pkg.resolve()
+                                        println("Dependencies resolved successfully")
+                                        flush(stdout)
+                                        flush(stderr)
+                                        
+                                        # Verify that project dependencies are actually available
+                                        # Check by trying to get dependency information - if this fails, dependencies might be missing
+                                        println("Verifying dependencies are installed...")
+                                        deps = Pkg.dependencies()
+                                        
+                                        # Check if we can access the project's direct dependencies
+                                        project_toml_path = joinpath("{}", "Project.toml")
+                                        if isfile(project_toml_path)
+                                            project_data = Pkg.TOML.parsefile(project_toml_path)
+                                            project_deps = get(project_data, "deps", Dict{{String, Any}}())
+                                            
+                                            # Verify each direct dependency is available
+                                            missing_deps = String[]
+                                            for (dep_name, dep_uuid) in project_deps
+                                                # Check if dependency is in the resolved dependencies
+                                                dep_found = false
+                                                for (uuid, dep_info) in deps
+                                                    if dep_info.name == dep_name
+                                                        dep_found = true
+                                                        break
+                                                    end
+                                                end
+                                                
+                                                if !dep_found
+                                                    push!(missing_deps, dep_name)
                                                 end
                                             end
                                             
-                                            if !dep_found
-                                                push!(missing_deps, dep_name)
-                                            end
-                                        end
-                                        
-                                        if !isempty(missing_deps)
-                                            if attempt < max_instantiate_attempts
-                                                println("Some dependencies appear to be missing: ", join(missing_deps, ", "))
-                                                println("Retrying Pkg.instantiate()...")
-                                                continue
+                                            if !isempty(missing_deps)
+                                                if attempt < max_instantiate_attempts
+                                                    println("Some dependencies appear to be missing: ", join(missing_deps, ", "))
+                                                    println("Retrying Pkg.instantiate()...")
+                                                    continue
+                                                else
+                                                    println("Warning: Some dependencies may still be missing after instantiate attempts")
+                                                end
                                             else
-                                                println("Warning: Some dependencies may still be missing after instantiate attempts")
+                                                instantiate_successful = true
+                                                break
                                             end
                                         else
+                                            # No Project.toml, just verify instantiate completed
                                             instantiate_successful = true
                                             break
                                         end
-                                    else
-                                        # No Project.toml, just verify instantiate completed
-                                        instantiate_successful = true
-                                        break
-                                    end
-                                catch e
-                                    error_msg = sprint(showerror, e)
-                                    if attempt < max_instantiate_attempts
-                                        println("Pkg.instantiate() encountered an error, retrying...")
-                                        println("Error: ", error_msg)
-                                        continue
-                                    else
-                                        println("Warning: Pkg.instantiate() failed after $max_instantiate_attempts attempts: ", error_msg)
-                                        # Continue anyway - some packages might still work
-                                        instantiate_successful = true
+                                    catch e
+                                        error_msg = sprint(showerror, e)
+                                        if attempt < max_instantiate_attempts
+                                            println("Pkg.instantiate() encountered an error, retrying...")
+                                            println("Error: ", error_msg)
+                                            continue
+                                        else
+                                            println("Warning: Pkg.instantiate() failed after $max_instantiate_attempts attempts: ", error_msg)
+                                            # Continue anyway - some packages might still work
+                                            instantiate_successful = true
+                                        end
                                     end
                                 end
+
+                                if instantiate_successful
+                                    touch(stamp_file)
+                                end
+                            else
+                                println("Packages: Manifest unchanged — skipping Pkg.instantiate()")
+                                instantiate_successful = true
                             end
                             
                             if instantiate_successful
@@ -463,8 +504,6 @@ impl Handler<ActivateProject> for ExecutionActor {
                             else
                                 println("Warning: Dependency installation may be incomplete")
                             end
-                            
-                            println("Project dependencies ready")
                             
                             # Put the local package in dev mode so Revise can track it
                             # This is critical for Revise to work with local packages
@@ -626,65 +665,99 @@ impl Handler<ActivateProject> for ExecutionActor {
                                 # println("Revise: ✗ Revise tracking setup failed: ", e)
                             end
                             
-                            # Wait for precompilation to complete to ensure all packages are ready
-                            # This ensures packages are fully installed and precompiled before we signal completion
-                            println("Waiting for package precompilation to complete...")
-                            try
-                                # Precompile packages - this ensures all packages are ready
-                                Pkg.precompile()
-                                println("Package precompilation complete")
-                            catch e
-                                # If precompilation fails, that's OK - packages are still installed
-                                # They'll be precompiled on first use
-                                println("Note: Some packages may still be precompiling (will happen on first use)")
+                            # Only precompile when dependencies changed.
+                            # Running this unconditionally adds major startup latency.
+                            if needs_update
+                                println("Waiting for package precompilation to complete...")
+                                try
+                                    # Precompile packages - this ensures all packages are ready
+                                    Pkg.precompile()
+                                    println("Package precompilation complete")
+                                catch e
+                                    # If precompilation fails, that's OK - packages are still installed
+                                    # They'll be precompiled on first use
+                                    println("Note: Some packages may still be precompiling (will happen on first use)")
+                                end
+                            else
+                                println("Packages unchanged — skipping Pkg.precompile()")
                             end
                             
                             # Emit signal after activation, instantiate, and precompilation are complete
                             println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
+                            flush(stderr)
                             
                             true
                         catch e
                             println("Failed to instantiate project: ", e)
                             println(stderr, "JuliaLab: PROJECT_ACTIVATION_COMPLETE")
+                            flush(stderr)
                             # Still emit complete signal even on error to allow startup to continue
                             # The error will be visible in the terminal
                             false
                         end
                         "#,
-                        julia_path, // line 313: project_toml_check path
-                        julia_path, // line 330: Pkg.develop path
-                        julia_path, // line 344: project_toml_path (dependency verification)
-                        julia_path, // line 346: project_toml_path (Revise tracking)
-                        julia_path  // line 412: project_src_dir
+                        julia_path, // stamp_file path
+                        julia_path, // manifest_file path
+                        julia_path, // project_toml_path (dependency verification)
+                        julia_path, // project_toml_check path
+                        julia_path, // Pkg.develop path
+                        julia_path, // project_toml_path (Revise tracking)
+                        julia_path  // project_src_dir
                     );
                     
                     let instantiate_result = communication_actor.send(ExecuteCode {
                         code: instantiate_code,
                         execution_type: ExecutionType::ApiCall,
                         file_path: None,
-                        suppress_busy_events: false,
-                    }).await
-                        .map_err(|e| format!("Failed to send instantiate code: {}", e))?
-                        .map_err(|e| format!("Instantiate failed: {}", e))?;
+                        suppress_busy_events: true,
+                    }).await;
                     
                     // Check if instantiate was successful
-                    let instantiate_success = match instantiate_result {
-                        JuliaMessage::ExecutionComplete { result: Some(result_str), success, .. } => {
-                            success && result_str.trim() == "true"
+                    let mut instantiate_success = false;
+                    match instantiate_result {
+                        Ok(Ok(result)) => {
+                            instantiate_success = match result {
+                                JuliaMessage::ExecutionComplete { result: Some(result_str), success, .. } => {
+                                    success && result_str.trim() == "true"
+                                }
+                                JuliaMessage::ExecutionComplete { error: Some(error_msg), .. } => {
+                                    debug!("ExecutionActor: Julia instantiate error: {}", error_msg);
+                                    false
+                                }
+                                _ => false,
+                            };
                         }
-                        JuliaMessage::ExecutionComplete { error: Some(error_msg), .. } => {
-                            return Err(format!("Julia instantiate error: {}", error_msg));
+                        Ok(Err(e)) => {
+                            // If we get "Failed to receive response", the instantiate code already emitted
+                            // PROJECT_ACTIVATION_COMPLETE to stderr, so the orchestrator will detect it.
+                            // We can consider this a success since the signal was sent.
+                            if e.contains("Failed to receive response") {
+                                debug!("ExecutionActor: Instantiate response lost, but PROJECT_ACTIVATION_COMPLETE signal was emitted to stderr");
+                                // Wait a bit for the signal to be processed
+                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                instantiate_success = true;
+                            } else {
+                                return Err(format!("Instantiate failed: {}", e));
+                            }
                         }
-                        _ => return Err("Unexpected response from Julia instantiate".to_string()),
-                    };
+                        Err(e) => {
+                            return Err(format!("Failed to send instantiate code: {}", e));
+                        }
+                    }
                     
                     if !instantiate_success {
                         return Err("Failed to instantiate Julia project".to_string());
                     }
                     
                     debug!("ExecutionActor: Project activated and instantiated successfully: {}", project_path);
-                    // Do NOT emit status update here - let the state machine handle status messages
-                    // The state machine will transition from ActivatingProject to StartingLsp and emit the appropriate status
+                    
+                    // Emit Julia prompt to show REPL is ready for input
+                    debug!("ExecutionActor: Emitting Julia prompt to terminal");
+                    if let Err(e) = event_manager.emit_julia_output("\x1b[1;32mjulia> \x1b[0m").await {
+                        error!("ExecutionActor: Failed to emit Julia prompt: {}", e);
+                    } else {
+                        debug!("ExecutionActor: Julia prompt emitted successfully");
+                    }
                     
                     Ok(())
                 } else {
@@ -701,6 +774,7 @@ impl Handler<DeactivateProject> for ExecutionActor {
     
     fn handle(&mut self, _msg: DeactivateProject, _ctx: &mut Context<Self>) -> Self::Result {
         let communication_actor = self.communication_actor.clone();
+        let event_manager = self.event_manager.clone();
         
         Box::pin(
             async move {

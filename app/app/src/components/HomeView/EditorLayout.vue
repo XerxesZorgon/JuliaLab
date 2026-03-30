@@ -1,10 +1,10 @@
 <template>
   <div class="editor-layout">
     <Splitpanes class="default-theme" :horizontal="true" style="height: 100%; width: 100%">
-      <Pane :size="editorPaneSize" min-size="30" style="background-color: #1e1e1e">
+      <Pane :size="editorPaneSize" min-size="30" style="background-color: var(--jl-editor-bg)">
         <EditorView />
       </Pane>
-      <Pane :size="terminalPaneSize" min-size="15" style="background-color: #252526">
+      <Pane :size="terminalPaneSize" min-size="15" style="background-color: var(--jl-terminal-bg)">
         <div class="terminal-container">
           <TerminalMenuBar />
           <div class="terminal-content">
@@ -80,7 +80,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #1e1e1e;
+  background-color: var(--jl-terminal-bg);
 }
 
 /* Styles for splitpanes within EditorLayout could go here if needed */

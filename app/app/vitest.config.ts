@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue'; // Import the Vue plugin
+import path from 'path';
 
 // If vite.config.js exports a default function or object, you might need to adjust how it's imported.
 // For simplicity, we'll define the Vitest config separately, ensuring Vue plugin is included.
@@ -11,7 +12,7 @@ export default defineConfig({
   test: {
     globals: true, // Makes describe, it, expect, etc. globally available
     environment: 'happy-dom', // or 'jsdom'
-    setupFiles: ['./src/test/setup.ts'], // Test setup file
+    setupFiles: ['./src/test/setup-localstorage.ts', './src/test/setup.ts'], // Test setup files
     coverage: {
       provider: 'v8', // or 'istanbul'
       reporter: ['text', 'json', 'html'],
@@ -37,6 +38,8 @@ export default defineConfig({
     },
     alias: {
       '@/': new URL('./src/', import.meta.url).pathname,
+      // monaco-editor has no Vite-resolvable entry point; redirect to a minimal stub
+      'monaco-editor': path.resolve('./src/test/__mocks__/monaco-editor.ts'),
     },
   },
 });

@@ -76,7 +76,7 @@ watch(
 <style scoped>
 .file-tree-search {
   padding: 8px;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--jl-border);
   flex-shrink: 0;
 }
 </style>

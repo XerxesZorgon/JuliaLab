@@ -3,13 +3,14 @@
     <div class="ribbon-group-buttons">
       <slot />
     </div>
-    <div class="ribbon-group-label">{{ title }}</div>
+    <div class="ribbon-group-label">{{ label ?? title }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 defineProps<{
-  title: string;
+  title?: string;
+  label?: string;
 }>();
 </script>
 

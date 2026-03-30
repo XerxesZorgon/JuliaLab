@@ -121,7 +121,9 @@ impl PlotServer {
     /// Find an available port by actually binding to it (atomic operation)
     /// Returns the listener to prevent race conditions
     pub async fn find_available_port(&self) -> Result<(u16, TcpListener), String> {
+        // Skip 8081 as it's reserved for WGLMakie interactive plots
         for port in 8080..9000 {
+            if port == 8081 { continue; }
             if let Ok(listener) = TcpListener::bind(format!("127.0.0.1:{}", port)).await {
                 return Ok((port, listener));
             }

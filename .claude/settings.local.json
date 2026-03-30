@@ -5,7 +5,13 @@
       "Bash(npm install)",
       "Bash(npm run tauri:*)",
       "Bash(taskkill:*)",
-      "Bash(npx vite:*)"
+      "Bash(npx vite:*)",
+      "Bash(curl -s \"https://api.github.com/repos/elan8/compute42/git/trees/master?recursive=1\")",
+      "Bash(node -e \"let d=''''''''; process.stdin.on\\(''''data'''',c=>d+=c\\); process.stdin.on\\(''''end'''',\\(\\)=>{const obj=JSON.parse\\(d\\); const t=obj.tree||[]; t.filter\\(f=>f.path.endsWith\\(''''.css''''\\)||f.path.endsWith\\(''''.scss''''\\)||f.path.endsWith\\(''''.sass''''\\)\\).forEach\\(f=>console.log\\(f.path\\)\\)}\\)\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/elan8/compute42/master/app/src/theme/index.ts\")",
+      "Bash(npx vitest:*)",
+      "Bash(npx tsc:*)",
+      "Bash(ls -la \"c:\\\\Users\\\\johnx\\\\Documents\\\\WildPeaches\\\\Projects\\\\JuliaLab\\\\.github\\\\workflows\"\" 2>/dev/null || echo \"No workflows directory found \")"
     ]
   }
 }

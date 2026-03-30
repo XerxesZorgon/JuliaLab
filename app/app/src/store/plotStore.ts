@@ -1,13 +1,21 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { debug, logError, logObject } from '../utils/logger';
 import { unifiedEventService, EventCategory } from '../services/unifiedEventService';
-import type { PlotData as GenPlotData } from '../types/bindings/shared/PlotData';
 
-export interface PlotData extends GenPlotData {
-  // frontend-only derived fields
+export interface PlotData {
+  id: string;
+  mime_type: string;
+  data: string; // Base64 encoded
+  timestamp: number;
+  title?: string | null;
+  description?: string | null;
+  source_file?: string | null;
+  line_number?: number | null;
+  code_context?: string | null;
+  session_id?: string | null;
   image_url?: string;
   imageSrc?: string;
 }
@@ -36,6 +44,7 @@ interface PlotState {
   isListening: boolean;
   eventUnlistenFn: (() => void) | null;
   plotServerPort: number | null;
+  isInteractive: boolean;
 }
 
 export const usePlotStore = defineStore('plot', () => {
@@ -45,6 +54,7 @@ export const usePlotStore = defineStore('plot', () => {
     isListening: false,
     eventUnlistenFn: null,
     plotServerPort: null,
+    isInteractive: false,
   });
 
   // Getters
@@ -128,6 +138,18 @@ export const usePlotStore = defineStore('plot', () => {
         }
       );
 
+      // Listen for interactive updates
+      const unlistenInteractive = await listen<any>('plot:interactive-update', (event) => {
+        debug('PlotStore: Received interactive plot update', event.payload);
+        const payload = event.payload;
+        if (
+          payload.type === 'InteractiveModeEnabled' ||
+          payload.type === 'InteractivePlotStarted'
+        ) {
+          state.isInteractive = true;
+        }
+      });
+
       // Legacy event listener for backward compatibility
       const unlisten = await listen<PlotEvent>('julia-plot', (event) => {
         logObject('info', 'Received legacy julia-plot event:', event);
@@ -140,7 +162,10 @@ export const usePlotStore = defineStore('plot', () => {
         }
       });
 
-      state.eventUnlistenFn = unlisten;
+      state.eventUnlistenFn = () => {
+        unlisten();
+        unlistenInteractive();
+      };
       state.isListening = true;
       debug('Successfully started listening for plot events');
     } catch (err) {
@@ -165,7 +190,7 @@ export const usePlotStore = defineStore('plot', () => {
     debug('Updating computed values, current plots in state: ' + state.plots.size);
 
     // Create a new array to ensure Vue reactivity
-    const plotsArray = Array.from(state.plots.values()).sort((a, b) => b.timestamp - a.timestamp);
+    const plotsArray = Array.from(state.plots.values()).sort((a, b) => a.timestamp - b.timestamp);
     plots.value = plotsArray;
     plotCount.value = state.plots.size;
 
@@ -229,6 +254,7 @@ export const usePlotStore = defineStore('plot', () => {
     switch (event.event_type) {
       case 'PlotCreated':
         if (event.plot_data) {
+          state.isInteractive = false;
           debug(
             'Adding plot to store: ' +
               event.plot_data.id +
@@ -466,5 +492,10 @@ export const usePlotStore = defineStore('plot', () => {
     setPlotServerPort,
     updateAllPlotUrls,
     plotServerPort: () => state.plotServerPort,
+    isInteractive: computed(() => state.isInteractive),
+    setInteractive: (interactive: boolean) => {
+      state.isInteractive = interactive;
+      debug(`PlotStore: Interactive mode set to ${interactive}`);
+    },
   };
 });

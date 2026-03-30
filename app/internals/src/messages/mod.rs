@@ -3,6 +3,7 @@
 
 pub mod orchestrator;
 pub mod configuration;
+pub mod workspace;
 pub mod state;
 pub mod execution;
 pub mod communication;

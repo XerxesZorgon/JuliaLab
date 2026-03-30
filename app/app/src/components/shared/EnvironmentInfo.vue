@@ -44,7 +44,7 @@ const openSettings = () => {
 <style scoped>
 .environment-info {
   margin-bottom: 1px;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--jl-border);
   padding-top: 1px;
   flex-shrink: 0;
 }
@@ -65,7 +65,7 @@ const openSettings = () => {
   font-size: 12px;
   font-weight: 500;
   flex: 1;
-  color: #ccc;
+  color: var(--jl-text-secondary);
 }
 
 .env-status-indicators {
@@ -78,7 +78,7 @@ const openSettings = () => {
 .environment-buttons {
   padding: 4px 8px 8px 8px;
   background-color: transparent;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--jl-border);
   margin-top: 4px;
 }
 

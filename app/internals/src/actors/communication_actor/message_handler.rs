@@ -40,7 +40,7 @@ impl MessageHandler {
     pub async fn handle_julia_message(
         &self,
         message: &crate::messages::JuliaMessage,
-        current_request: &Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+        pending_requests: &Arc<Mutex<std::collections::HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
     ) -> Result<(), String> {
         match message {
             crate::messages::JuliaMessage::ExecutionComplete {
@@ -56,7 +56,7 @@ impl MessageHandler {
                     execution_type,
                     result,
                     error,
-                    current_request,
+                    pending_requests,
                 ).await
             }
 
@@ -106,6 +106,12 @@ impl MessageHandler {
                 value,
                 ..
             } => self.handle_variable_value(variable_name, value.as_deref()).await,
+            crate::messages::JuliaMessage::PlotUpdate { payload } => {
+                self.handle_plot_update(payload).await
+            }
+            crate::messages::JuliaMessage::MethodInfo { methods, .. } => {
+                self.handle_method_info(methods).await
+            }
             _ => {
                 debug!(
                     "[CommunicationActor::MessageHandler] Unhandled message type: {:?}",
@@ -121,28 +127,21 @@ impl MessageHandler {
     /// Process pending request and send response if ID matches
     #[allow(clippy::type_complexity)]
     async fn process_pending_request(
-        current_request: &Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+        pending_requests: &Arc<Mutex<std::collections::HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
         message: &crate::messages::JuliaMessage,
         id: &str,
     ) {
-        let mut current_request_guard = current_request.lock().await;
-        if let Some((request_id, sender)) = current_request_guard.take() {
-            debug!("[CommunicationActor::MessageHandler] Found pending request with ID: {}", request_id);
-            if request_id == *id {
-                debug!("[CommunicationActor::MessageHandler] Request ID matches, sending response");
-                if let Err(e) = sender.send(message.clone()) {
-                    error!("[CommunicationActor::MessageHandler] Failed to send response: {:?}", e);
-                } else {
-                    debug!("[CommunicationActor::MessageHandler] Successfully sent response");
-                }
+        let mut pending_requests_guard = pending_requests.lock().await;
+        if let Some((sender, _should_show_busy)) = pending_requests_guard.remove(id) {
+            trace!("[CommunicationActor::MessageHandler] Found pending request with ID: {}", id);
+            trace!("[CommunicationActor::MessageHandler] Request ID matches, sending response");
+            if let Err(e) = sender.send(message.clone()) {
+                error!("[CommunicationActor::MessageHandler] Failed to send response: {:?}", e);
             } else {
-                debug!(
-                    "[CommunicationActor::MessageHandler] Request ID mismatch: expected {}, got {}",
-                    id, request_id
-                );
+                trace!("[CommunicationActor::MessageHandler] Successfully sent response");
             }
         } else {
-            debug!("[CommunicationActor::MessageHandler] No pending request found for ID: {}", id);
+            trace!("[CommunicationActor::MessageHandler] No pending request found for ID: {}", id);
         }
     }
 
@@ -185,11 +184,11 @@ impl MessageHandler {
         execution_type: &crate::messages::ExecutionType,
         result: &Option<String>,
         error: &Option<String>,
-        current_request: &Arc<Mutex<Option<(String, tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>)>>>,
+        pending_requests: &Arc<Mutex<std::collections::HashMap<String, (tokio::sync::oneshot::Sender<crate::messages::JuliaMessage>, bool)>>>,
     ) -> Result<(), String> {
-        debug!("[CommunicationActor::MessageHandler] Received execution complete: {} (type: {:?})", id, execution_type);
+        trace!("[CommunicationActor::MessageHandler] Received execution complete: {} (type: {:?})", id, execution_type);
         
-        Self::process_pending_request(current_request, message, id).await;
+        Self::process_pending_request(pending_requests, message, id).await;
         
         let cleaned_result = Self::clean_array_string_result(result);
         
@@ -331,6 +330,21 @@ impl MessageHandler {
         });
         self.event_manager.emit("workspace:variable-value-received", payload).await
             .map_err(|e| format!("Failed to emit variable value event: {}", e))
+    }
+
+    async fn handle_plot_update(&self, payload: &serde_json::Value) -> Result<(), String> {
+        debug!("[CommunicationActor::MessageHandler] Received plot update: {:?}", payload);
+        self.event_manager.emit("plot:interactive-update", payload.clone()).await
+            .map_err(|e| format!("Failed to emit plot update event: {}", e))
+    }
+
+    async fn handle_method_info(
+        &self,
+        methods: &serde_json::Value,
+    ) -> Result<(), String> {
+        debug!("[CommunicationActor::MessageHandler] Received method info");
+        self.event_manager.emit("methods:info", methods.clone()).await
+            .map_err(|e| format!("Failed to emit methods:info event: {}", e))
     }
 
     /// Parse nested Julia message format

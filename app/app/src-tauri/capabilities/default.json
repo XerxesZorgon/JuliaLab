@@ -1,21 +1,40 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "Main application capabilities",
+  "description": "JuliaLab production capabilities — least-privilege for each plugin",
   "windows": ["main"],
   "permissions": [
     "core:app:default",
     "core:window:default",
-    "shell:default",
-    "dialog:default",
     "core:event:allow-unlisten",
     "core:event:default",
-    "fs:default",
-    "opener:default",
-    "log:default",
-    "process:default",
     "core:path:allow-join",
     "core:path:default",
+
+    "log:default",
+
+    "process:allow-exit",
+    "process:allow-restart",
+
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    "dialog:allow-ask",
+
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-read-dir",
+    "fs:allow-stat",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-remove",
+    "fs:allow-rename",
+    "fs:allow-copy-file",
+
+    "shell:allow-open",
+
+    "opener:default",
+
     "http:default"
   ]
 }

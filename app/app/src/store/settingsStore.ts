@@ -40,7 +40,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const defaultTabSize = 4;
   const defaultLineNumbers = true;
   const defaultMinimap = true;
-  const defaultColorScheme = 'vs-dark';
+  const defaultColorScheme = 'vs';
 
   // Getter functions that return defaults if setting is null
   const getEditorFontFamily = () => {

@@ -12,16 +12,16 @@ function handle_debug_message(data)
         if debug_data === nothing
             error("Invalid debug message structure: missing or invalid 'data' field")
         end
-        
+
         id = extract_required_string(debug_data, "id")
-        
+
         # message might be a Dict or JSON.Object
         message_field = debug_data["message"]
         message = isa(message_field, Dict) ? message_field : extract_dict(message_field)
         if message === nothing
             error("Invalid debug message structure: missing or invalid 'message' field")
         end
-        
+
         # Route the debug command to the appropriate handler
         if haskey(message, "StartDebug")
             handle_start_debug(message["StartDebug"])
@@ -54,10 +54,10 @@ function handle_debug_message(data)
             )
             send_message_to_backend(response)
         end
-        
+
     catch e
         println(stderr, "JuliaLab: Error handling debug message: ", sprint(showerror, e))
-        
+
         # Send error response (with safe field extraction)
         id = "unknown"
         try
@@ -74,7 +74,7 @@ function handle_debug_message(data)
         catch
             # Use default "unknown" if extraction fails
         end
-        
+
         response = Dict(
             "DebugMessageResponse" => Dict(
                 "id" => id,
@@ -98,10 +98,10 @@ function handle_messages_loop()
             println(stderr, "JuliaLab: ERROR - JJ_PERMANENT_SOCKET is not open in handle_messages_loop")
             return
         end
-        
+
         # Signal that the message loop is now actively running and ready to receive messages
         println(stderr, "JuliaLab: MESSAGE_LOOP_READY")
-        
+
         while JJ_PERMANENT_SOCKET !== nothing && isopen(JJ_PERMANENT_SOCKET)
             try
                 # Read a line from the socket

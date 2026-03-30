@@ -20,6 +20,10 @@ include(joinpath(@__DIR__, "submodules", "workspace.jl"))
 # 4. Handlers (depends on execution, workspace, communication, debugger)
 include(joinpath(@__DIR__, "submodules", "handlers.jl"))
 
+# 5. Plotting (interactive support) - REMOVED to fix startup
+# Plotting packages are now optional and can be loaded on-demand
+# include(joinpath(@__DIR__, "submodules", "plotting.jl"))
+
 
 
 

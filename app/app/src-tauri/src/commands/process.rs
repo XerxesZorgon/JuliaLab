@@ -25,13 +25,13 @@ pub async fn init_terminal_session(_app_state: State<'_, AppState>) -> Result<St
 
 #[tauri::command]
 pub async fn restart_julia(app_state: State<'_, AppState>) -> Result<(), AppError> {
-    debug!("[Process] Restart Julia");
-    use internals::messages::process::RestartJulia;
+    debug!("[Process] Restart Julia (via orchestrator)");
+    use internals::messages::orchestrator::RestartJuliaOrchestrator;
     Ok(
         app_state
             .actor_system
-            .process_actor
-            .send(RestartJulia)
+            .orchestrator_actor
+            .send(RestartJuliaOrchestrator)
             .await
             .map_err(|_| AppError::InternalError("Actor comm failed".to_string()))??,
     )

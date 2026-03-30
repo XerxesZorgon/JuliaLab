@@ -4,7 +4,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      background-color: #282828;
+      background-color: var(--jl-panel-bg);
       min-height: 0;
     "
   >
@@ -160,7 +160,7 @@
             flex-shrink: 0;
             padding: 12px;
             border-top: 1px solid #444;
-            background-color: #1e1e1e;
+            background-color: var(--jl-panel-bg);
           "
         >
           <n-space vertical size="small">
@@ -539,7 +539,7 @@ watch(
   cursor: pointer;
   border-radius: 6px;
   overflow: hidden;
-  background-color: #1e1e1e;
+  background-color: var(--jl-panel-bg);
   border: 1px solid #444;
   transition: all 0.2s ease;
 }
@@ -553,7 +553,7 @@ watch(
 .plot-thumbnail-content {
   position: relative;
   aspect-ratio: 4/3;
-  background-color: #1e1e1e;
+  background-color: var(--jl-panel-bg);
 }
 
 .plot-image {
@@ -588,7 +588,7 @@ watch(
 
 .plot-info {
   padding: 6px 8px;
-  background-color: #1e1e1e;
+  background-color: var(--jl-panel-bg);
 }
 
 .plot-modal-placeholder {

@@ -9,6 +9,7 @@ use crate::actors::{
     OrchestratorActor, ConfigurationActor, StateActor, ExecutionActor,
     CommunicationActor, ProcessActor, LspActor, PlotActor,
     ProjectActor, FilesystemActor, FileWatcherActor, FileServerActor, InstallationActor,
+    WorkspaceActor,
 };
 use crate::messages::orchestrator::SetActorAddresses;
 use crate::messages::coordination::{ErrorSeverity, ActorError, ActorHealth, DependencyReady, DependencyFailed, ResourceAcquired, ResourceReleased, PerformanceMetric, DebugLog};
@@ -32,6 +33,7 @@ pub struct ActorSystem {
     pub filesystem_actor: Addr<FilesystemActor>,
     pub file_watcher_actor: Addr<FileWatcherActor>,
     pub project_actor: Addr<ProjectActor>,
+    pub workspace_actor: Addr<WorkspaceActor>,
     // pub sysimage_actor: Addr<SysimageActor>,
     
     // Event manager for shared event coordination
@@ -132,6 +134,18 @@ impl ActorSystem {
         let file_watcher_actor = FileWatcherActor::new(Arc::new(event_manager.clone())).start();
         let project_actor = ProjectActor::new().start();
         
+        // WorkspaceActor handles polling and variable inspection
+        let workspace_actor = WorkspaceActor::new(event_manager.clone()).start();
+        workspace_actor.do_send(crate::actors::workspace_actor::SetCommunicationActor {
+            communication_actor: communication_actor.clone(),
+        });
+        // Start polling after a delay to avoid request ID conflicts during startup
+        let workspace_actor_clone = workspace_actor.clone();
+        actix::spawn(async move {
+            tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            workspace_actor_clone.do_send(crate::actors::workspace_actor::StartPolling);
+        });
+        
         // Configuration is now loaded automatically during ConfigurationActor initialization
         
         // Set orchestrator address on LspActor for coordination
@@ -186,6 +200,7 @@ impl ActorSystem {
             filesystem_actor,
             file_watcher_actor,
             project_actor,
+            workspace_actor,
             // sysimage_actor,
             event_manager,
         }
