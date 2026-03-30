@@ -528,7 +528,7 @@ pub async fn execute_code(
         code,
         execution_type: exec_type,
         file_path,
-        suppress_busy_events: false,
+        suppress_busy_events: true,
     }).await {
         Ok(Ok(internals::messages::JuliaMessage::ExecutionComplete { result, error, success, .. })) => {
             if success {
