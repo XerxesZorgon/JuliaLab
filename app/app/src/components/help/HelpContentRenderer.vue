@@ -11,7 +11,7 @@
       <!-- About page specific content -->
       <div v-if="sectionId === 'about'" class="about-content">
         <div class="about-header">
-          <img src="/icon.png" alt="JuliaLab" class="about-logo" />
+          <img src="/JuliaLab_icon.png" alt="JuliaLab" class="about-logo" />
           <h1>About JuliaLab</h1>
         </div>
 
@@ -60,6 +60,24 @@
             </tbody>
           </table>
         </div>
+
+          <div class="about-section">
+            <h2 class="about-section-title">Julia Information</h2>
+            <div class="about-divider"></div>
+            <div class="about-info-row">
+              <span class="about-info-label">Version:</span>
+              <span class="about-info-value">{{ juliaVersion || 'Loading...' }}</span>
+            </div>
+          </div>
+
+          <div class="about-section" v-if="Object.keys(storagePaths).length">
+            <h2 class="about-section-title">Storage Paths</h2>
+            <div class="about-divider"></div>
+            <div v-for="(pathInfo, key) in storagePaths" :key="key" class="about-path-item">
+              <span class="about-path-label">{{ key }}:</span>
+              <span class="about-path-value">{{ pathInfo.path || pathInfo }}</span>
+            </div>
+          </div>
       </div>
 
       <!-- Markdown content for other pages -->
@@ -71,11 +89,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { NSpin, NButton, NIcon } from 'naive-ui';
 import { CopyOutline, RefreshOutline, OpenOutline } from '@vicons/ionicons5';
 import { useMessage } from 'naive-ui';
 import { marked } from 'marked';
+import { invoke } from '@tauri-apps/api/core';
 
 interface Props {
   content: any;
@@ -94,6 +113,19 @@ const emit = defineEmits<{
 }>();
 
 const message = useMessage();
+
+const juliaVersion = ref('');
+const storagePaths = ref<Record<string, any>>({});
+
+onMounted(async () => {
+  try {
+    juliaVersion.value = await invoke('get_julia_version');
+  } catch {}
+  try {
+    const paths = await invoke('get_julia_storage_paths');
+    storagePaths.value = paths as Record<string, any>;
+  } catch {}
+});
 
 // Configure marked options
 marked.setOptions({
@@ -410,6 +442,46 @@ const handleLinkClick = async (url: string) => {
 
 .action-button {
   min-width: 120px;
+}
+
+.about-section { margin-bottom: 1.25rem; }
+.about-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--n-text-color);
+  margin: 0 0 0.25rem 0;
+}
+.about-divider {
+  border-top: 1px solid var(--n-border-color);
+  margin-bottom: 0.5rem;
+}
+.about-info-row {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+}
+.about-info-label { font-weight: 600; color: var(--n-text-color); }
+.about-info-value { color: var(--n-text-color-2); }
+.about-path-item {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.2rem 0;
+  font-size: 0.85rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.about-path-label {
+  font-weight: 600;
+  color: var(--n-text-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.about-path-value {
+  color: var(--n-text-color-2);
+  font-family: monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
 }
 
 /* Responsive Design */

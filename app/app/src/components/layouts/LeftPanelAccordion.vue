@@ -36,10 +36,6 @@
       </n-collapse>
     </div>
 
-    <!-- Environment Info - Always visible at bottom -->
-    <div style="flex-shrink: 0; border-top: 1px solid var(--jl-border)">
-      <EnvironmentInfo />
-    </div>
   </div>
 </template>
 
@@ -48,7 +44,6 @@ import { ref, computed, onMounted } from 'vue';
 import { NCollapse, NCollapseItem, NIcon } from 'naive-ui';
 import { FolderOutline } from '@vicons/ionicons5';
 import { FileExplorer } from '../FileExplorer';
-import EnvironmentInfo from '../shared/EnvironmentInfo.vue';
 import { useAppStore } from '../../store/appStore';
 
 const expandedNames = ref(['explorer']); // Start with only explorer expanded

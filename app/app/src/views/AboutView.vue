@@ -137,8 +137,7 @@ onMounted(async () => {
 }
 
 .help-tabs :deep(.n-tabs-nav) {
-  margin-bottom: 1rem;
-  flex-shrink: 0;
+  display: none;
 }
 
 .help-tabs :deep(.n-tabs-content) {
