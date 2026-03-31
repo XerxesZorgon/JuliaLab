@@ -381,14 +381,33 @@ onMounted(async () => {
     if (path) await openFile(path);
   }
 
+  function handleAiContentRequest() {
+    const path = activeTab.value;
+    if (!path) {
+      window.dispatchEvent(new CustomEvent('ai:file-content', {
+        detail: { content: null, filename: null, path: null }
+      }));
+      return;
+    }
+    const content = editorRefs.value[path]?.getCurrentValue()
+      ?? openFiles.value.find(f => f.path === path)?.content
+      ?? null;
+    const filename = path.split(/[\\/]/).pop() || null;
+    window.dispatchEvent(new CustomEvent('ai:file-content', {
+      detail: { content, filename, path }
+    }));
+  }
+
   window.addEventListener('file-deleted', handleFileDeleted as EventListener);
   window.addEventListener('ribbon:open-file', handleRibbonOpenFile as EventListener);
+  window.addEventListener('ai:request-file-content', handleAiContentRequest as EventListener);
 
   // Clean up all listeners on unmount
   onUnmounted(() => {
     unlistenExecutionComplete();
     window.removeEventListener('file-deleted', handleFileDeleted as EventListener);
     window.removeEventListener('ribbon:open-file', handleRibbonOpenFile as EventListener);
+    window.removeEventListener('ai:request-file-content', handleAiContentRequest as EventListener);
   });
 
   // Let DiagnosticsPanel know initial active file

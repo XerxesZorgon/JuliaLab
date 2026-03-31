@@ -250,6 +250,10 @@
       <!-- Startup tip toast -->
       <TipToast />
     </div>
+    <AiAssistantPanel
+      :show="layoutStore.showAiPanel"
+      @close="layoutStore.showAiPanel = false"
+    />
   </div>
 </template>
 
@@ -369,6 +373,7 @@ import PanelHeader from './PanelHeader.vue';
 import FileTreePanel from './FileTreePanel.vue';
 import WorkspaceTabsPanel from './WorkspaceTabsPanel.vue';
 import DockLayout from './DockLayout.vue';
+import AiAssistantPanel from './AiAssistantPanel.vue';
 import { useAppStore } from '../../store/appStore';
 import { useLayoutStore } from '../../store/layoutStore';
 import { usePlotStore } from '../../store/plotStore';
