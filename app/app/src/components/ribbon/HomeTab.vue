@@ -101,6 +101,31 @@
         </RibbonBtn>
       </div>
     </RibbonGroup>
+
+    <RibbonDivider />
+
+    <!-- ENVIRONMENT group -->
+    <RibbonGroup title="Environment">
+      <div class="ribbon-col">
+        <RibbonBtn label="Add Julia Version" @click="openJuliaupInstall">
+          <template #icon>
+            <n-icon size="20"><DownloadOutline /></n-icon>
+          </template>
+        </RibbonBtn>
+        <RibbonBtn label="Manage Versions" @click="openJuliaupManage">
+          <template #icon>
+            <n-icon size="20"><LayersOutline /></n-icon>
+          </template>
+        </RibbonBtn>
+      </div>
+      <div class="ribbon-col">
+        <RibbonBtn label="Restart Julia" @click="restartJulia" :disabled="true">
+          <template #icon>
+            <n-icon size="20"><RefreshOutline /></n-icon>
+          </template>
+        </RibbonBtn>
+      </div>
+    </RibbonGroup>
   </div>
 
   <!-- Go to File modal -->
@@ -185,7 +210,8 @@ import { open as openExternal } from '@tauri-apps/plugin-shell';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import type { UnlistenFn } from '@tauri-apps/api/event';
-import { NModal, NInput, NButton, useMessage } from 'naive-ui';
+import { NModal, NInput, NButton, NIcon, useMessage } from 'naive-ui';
+import { DownloadOutline, LayersOutline, RefreshOutline } from '@vicons/ionicons5';
 import { useAppStore } from '../../store/appStore';
 import { useJuliaActions } from '../../composables/useJuliaActions';
 import RibbonGroup from './RibbonGroup.vue';
@@ -422,6 +448,23 @@ const handlePackages = () => {
 const handleOpenDyad = async () => {
   await openExternal('https://juliahub.com/products/dyad/');
 };
+
+async function restartJulia() {
+  try {
+    await invoke('restart_julia');
+  } catch (e) {
+    console.error('Failed to restart Julia:', e);
+  }
+}
+
+async function openJuliaupInstall() {
+  // Open Julia downloads page
+  await openExternal('https://julialang.org/downloads/');
+}
+async function openJuliaupManage() {
+  // Open juliaup documentation
+  await openExternal('https://github.com/JuliaLang/juliaup#using-juliaup');
+}
 </script>
 
 <style scoped>

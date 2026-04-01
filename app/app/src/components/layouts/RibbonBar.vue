@@ -18,6 +18,18 @@
           </template>
         </n-tab>
       </n-tabs>
+      <n-tooltip trigger="hover" placement="bottom">
+        <template #trigger>
+          <n-button
+            text
+            class="ribbon-help-btn"
+            @click="openJuliaDocs"
+          >
+            <n-icon size="18"><HelpCircleOutline /></n-icon>
+          </n-button>
+        </template>
+        Julia Documentation
+      </n-tooltip>
 
       <!-- Pin toggle -->
       <div class="ribbon-actions">
@@ -48,7 +60,7 @@
     <div class="ribbon-content" :class="{ collapsed: !showRibbon }">
       <div class="ribbon-content-inner">
         <div class="ribbon-logo">
-          <img src="/JuliaLab_home.png" alt="JuliaLab" class="ribbon-logo-img" />
+          <img src="/JuliaLab_icon.png" alt="JuliaLab" class="ribbon-logo-img" />
         </div>
         <component :is="tabComponent" />
       </div>
@@ -58,7 +70,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, type Component } from 'vue';
-import { NTabs, NTab } from 'naive-ui';
+import { NButton, NTabs, NTab, NIcon, NTooltip } from 'naive-ui';
+import { HelpCircleOutline } from '@vicons/ionicons5';
+import { open as openExternal } from '@tauri-apps/plugin-shell';
 import { useLayoutStore } from '../../store/layoutStore';
 import { usePlotStore } from '../../store/plotStore';
 import HomeTab from '../ribbon/HomeTab.vue';
@@ -85,6 +99,10 @@ const handleTabChange = (value: string) => {
   layoutStore.ribbonVisible = true;
   emit('tab-change', activeTab.value);
 };
+
+async function openJuliaDocs() {
+  await openExternal('https://docs.julialang.org/en/v1/');
+}
 
 // Map tabs to components
 const tabComponents: Record<TabName, Component> = {
@@ -180,6 +198,16 @@ onUnmounted(() => {
 
 :deep(.n-tabs-pad) {
   border-bottom: none !important;
+}
+
+/* ─── Help button ────────────────────────────────────────────────────────── */
+.ribbon-help-btn {
+  padding: 0 10px;
+  color: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+}
+.ribbon-help-btn:hover {
+  color: #ffffff;
 }
 
 /* ─── Ribbon Actions ─────────────────────────────────────────────────────── */

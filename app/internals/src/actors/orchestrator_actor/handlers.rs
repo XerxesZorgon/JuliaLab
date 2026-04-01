@@ -113,10 +113,17 @@ impl Handler<RestartJuliaOrchestrator> for OrchestratorActor {
         ctx.spawn(
             async move {
                 debug!("OrchestratorActor: Restarting Julia in async task");
-                let _ = actor.restart_julia().await;
+                let result = actor.restart_julia().await;
+                (result, actor.restart_pending, actor.restart_request_id.clone())
             }
             .into_actor(self)
-            .map(|_, _actor, _ctx| {})
+            .map(|result, act, _ctx| {
+                let (_, pending, request_id) = result;
+                // Propagate restart state back to real actor
+                act.restart_pending = pending;
+                act.restart_request_id = request_id;
+                debug!("OrchestratorActor: restart_pending propagated to real actor: {}", act.restart_pending);
+            })
         );
         Ok(())
     }

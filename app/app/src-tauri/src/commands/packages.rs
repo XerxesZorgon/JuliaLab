@@ -10,128 +10,77 @@ pub async fn get_julia_package_status(app_state: State<'_, AppState>) -> Result<
     debug!("[Packages] Getting Julia package status");
     let code = r#"
         try
-            # Use local scope to avoid polluting global namespace
-            let
-                # Import packages locally without affecting global scope
-                local Pkg = Base.require(Base.PkgId(Base.UUID("44cfe95a-1eb2-52ea-b672-e2afdf69b78f"), "Pkg"))
-                local JSON = Base.require(Base.PkgId(Base.UUID("682c06a0-de6a-54ab-a142-c8b1cf79cde6"), "JSON"))
-                
-                # Get current project
-                current_project = Pkg.project()
-                deps = Pkg.dependencies()
-                direct_deps = Set{String}()
-                
-                # Read Project.toml to identify direct dependencies
-                try
-                    project_toml = Pkg.TOML.parsefile(joinpath(dirname(current_project.path), "Project.toml"))
-                    if haskey(project_toml, "deps")
-                        for (name, uuid) in project_toml["deps"]
-                            push!(direct_deps, name)
-                        end
-                    end
-                catch e
-                    # If we can't read Project.toml, continue without direct dependency info
-                end
-                
-                # Build package list
-                packages = []
-                for (uuid, dep) in deps
-                    is_direct = dep.name in direct_deps
-                    pkg_info = Dict(
-                        "name" => dep.name,
-                        "version" => string(dep.version),
-                        "uuid" => string(uuid),
-                        "description" => nothing,
-                        "is_direct" => is_direct
-                    )
-                    push!(packages, pkg_info)
-                end
-                
-                # Return the final result as JSON
-                active_project = Pkg.project().path
-                JSON.json(Dict("packages" => packages, "active_project" => active_project))
-            end
-        catch e
-            # Fallback: try with global imports if local scope fails
+            local Pkg = Base.require(Base.PkgId(Base.UUID("44cfe95a-1eb2-52ea-b672-e2afdf69b78f"), "Pkg"))
+            local JSON = Base.require(Base.PkgId(Base.UUID("682c06a0-de6a-54ab-a142-c8b1cf79cde6"), "JSON"))
+
+            current_project = Pkg.project()
+            deps = Pkg.dependencies()
+            direct_deps = Set{String}()
+
             try
-                if !isdefined(Main, :Pkg)
-                    using Pkg
-                end
-                if !isdefined(Main, :JSON)
-                    using JSON
-                end
-                
-                current_project = Pkg.project()
-                deps = Pkg.dependencies()
-                direct_deps = Set{String}()
-                
-                try
-                    project_toml = Pkg.TOML.parsefile(joinpath(dirname(current_project.path), "Project.toml"))
-                    if haskey(project_toml, "deps")
-                        for (name, uuid) in project_toml["deps"]
-                            push!(direct_deps, name)
-                        end
+                project_toml = Pkg.TOML.parsefile(joinpath(dirname(current_project.path), "Project.toml"))
+                if haskey(project_toml, "deps")
+                    for (name, _uuid) in project_toml["deps"]
+                        push!(direct_deps, name)
                     end
-                catch e
                 end
-                
-                packages = []
-                for (uuid, dep) in deps
-                    is_direct = dep.name in direct_deps
-                    pkg_info = Dict(
-                        "name" => dep.name,
-                        "version" => string(dep.version),
-                        "uuid" => string(uuid),
-                        "description" => nothing,
-                        "is_direct" => is_direct
-                    )
-                    push!(packages, pkg_info)
-                end
-                
-                active_project = Pkg.project().path
-                JSON.json(Dict("packages" => packages, "active_project" => active_project))
-            catch e2
-                JSON.json(Dict("error" => "Failed to get package status: " * string(e2), "packages" => [], "active_project" => nothing))
+            catch
             end
+
+            packages = []
+            for (uuid, dep) in deps
+                push!(packages, Dict(
+                    "name" => dep.name,
+                    "version" => string(dep.version),
+                    "uuid" => string(uuid),
+                    "description" => nothing,
+                    "is_direct" => dep.name in direct_deps
+                ))
+            end
+
+            JSON.json(Dict("packages" => packages, "active_project" => current_project.path))
+        catch e
+            # If JSON didn't load either, return a plain-text fallback that Rust can detect
+            "{\"packages\":[], \"active_project\":null, \"error\":\"" * replace(string(e), "\"" => "'") * "\"}"
         end
     "#;
     use internals::messages::execution::ExecuteApiRequest;
-    match app_state.actor_system.execution_actor.send(ExecuteApiRequest { code: code.to_string() }).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
-        Ok(result) => {
-            let result = result.to_string();
-            // Only log a summary to avoid cluttering logs with large package lists
-            let preview = if result.len() > 200 {
-                format!("{}... ({} chars)", &result[..200], result.len())
-            } else {
-                result.clone()
-            };
-            debug!("[Packages] Result from Julia (preview): {}", preview);
-            match serde_json::from_str::<serde_json::Value>(&result) {
+
+    // Wrap in a 30-second timeout so the frontend never hangs forever
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(30),
+        app_state.actor_system.execution_actor.send(ExecuteApiRequest { code: code.to_string() }),
+    ).await;
+
+    let result = match result {
+        Ok(actor_result) => actor_result.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))?,
+        Err(_) => {
+            error!("[Packages] Timed out waiting for Julia package status (30s)");
+            return Ok(serde_json::json!({"packages": [], "active_project": null, "error": "Request timed out after 30 seconds"}));
+        }
+    };
+
+    match result {
+        Ok(raw) => {
+            let raw = raw.to_string();
+            let preview = if raw.len() > 200 { format!("{}…", &raw[..200]) } else { raw.clone() };
+            debug!("[Packages] Result preview: {}", preview);
+            match serde_json::from_str::<serde_json::Value>(&raw) {
                 Ok(json) => {
-                    // Log package count instead of full list
-                    if let Some(packages) = json.get("packages").and_then(|p| p.as_array()) {
-                        debug!("[Packages] Successfully parsed JSON from Julia: {} packages", packages.len());
-                    } else {
-                        debug!("[Packages] Successfully parsed JSON from Julia");
+                    if let Some(pkgs) = json.get("packages").and_then(|p| p.as_array()) {
+                        debug!("[Packages] Parsed {} packages", pkgs.len());
                     }
                     Ok(json)
                 },
                 Err(e) => {
-                    error!("[Packages] Failed to parse JSON from Julia: {}", e);
-                    // Only log preview of raw result on error
-                    let error_preview = if result.len() > 500 {
-                        format!("{}... ({} chars)", &result[..500], result.len())
-                    } else {
-                        result
-                    };
-                    error!("[Packages] Raw result preview: {}", error_preview);
+                    error!("[Packages] JSON parse error: {} — raw: {}", e, preview);
                     Ok(serde_json::json!({"packages": [], "active_project": null}))
                 },
             }
         },
         Err(e) => {
-            error!("[Packages] Failed to get package status: {}", e);
-            Ok(serde_json::json!({"packages": [], "active_project": null}))
+            error!("[Packages] Julia execution failed: {}", e);
+            Ok(serde_json::json!({"packages": [], "active_project": null, "error": e}))
         }
     }
 }
@@ -177,8 +126,16 @@ pub async fn clean_transitive_dependencies(app_state: State<'_, AppState>) -> Re
         end
     "#;
     use internals::messages::execution::ExecuteApiRequest;
-    match app_state.actor_system.execution_actor.send(ExecuteApiRequest { code: code.to_string() }).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
-        Ok(result) => if result.contains("cleaned successfully") { Ok(()) } else { Err(AppError::InternalError(result)) },
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(60),
+        app_state.actor_system.execution_actor.send(ExecuteApiRequest { code: code.to_string() }),
+    ).await;
+    let result = match result {
+        Ok(actor_result) => actor_result.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))?,
+        Err(_) => return Err(AppError::InternalError("Timed out after 60 seconds".to_string())),
+    };
+    match result {
+        Ok(r) => if r.contains("cleaned successfully") { Ok(()) } else { Err(AppError::InternalError(r)) },
         Err(e) => Err(AppError::InternalError(format!("Failed to clean transitive dependencies: {}", e))),
     }
 }
@@ -266,13 +223,20 @@ pub async fn run_julia_pkg_command(command: String, app_state: State<'_, AppStat
                 JSON.json(result)
             end
         catch e
-            error_msg = "Failed to execute Pkg command: " * string(e)
-            JSON.json(Dict("success" => false, "message" => error_msg, "stdout" => "", "stderr" => error_msg))
+            "{{\"success\":false,\"message\":\"" * replace(string(e), "\"" => "'") * "\",\"stdout\":\"\",\"stderr\":\"\"}}"
         end
     "#, command, command);
     use internals::messages::execution::ExecuteApiRequest;
-    match app_state.actor_system.execution_actor.send(ExecuteApiRequest { code }).await.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))? {
-        Ok(result) => Ok(result),
+    let result = tokio::time::timeout(
+        std::time::Duration::from_secs(120),
+        app_state.actor_system.execution_actor.send(ExecuteApiRequest { code }),
+    ).await;
+    let result = match result {
+        Ok(actor_result) => actor_result.map_err(|_| AppError::InternalError("Actor comm failed".to_string()))?,
+        Err(_) => return Err(AppError::InternalError("Pkg command timed out after 120 seconds".to_string())),
+    };
+    match result {
+        Ok(r) => Ok(r),
         Err(e) => Err(AppError::InternalError(format!("Failed to execute Pkg command: {}", e))),
     }
 }
