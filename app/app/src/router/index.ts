@@ -24,6 +24,11 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/PackageManagement.vue'),
       },
       {
+        path: '/source-control',
+        name: 'SourceControl',
+        component: () => import('../views/SourceControlView.vue'),
+      },
+      {
         path: '/settings',
         name: 'Settings',
         component: () => import('../views/SettingsView.vue'),

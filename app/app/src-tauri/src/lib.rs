@@ -161,7 +161,9 @@ use crate::commands::{
         get_plot, new_figure, plot_export, serve_plot_image, test_plot_system,
     },
     utils::{get_system_info, open_url, set_last_opened_folder, is_subscription_enabled, is_ai_enabled, get_app_settings, set_app_settings, get_available_fonts},
-    pluto::launch_pluto,    file_server::{start_file_server, stop_file_server, get_file_server_url, is_file_server_running},
+    pluto::launch_pluto,
+    file_server::{start_file_server, stop_file_server, get_file_server_url, is_file_server_running},
+
 };
 // Terminal manager removed - using single persistent Julia session instead
 // PlotManager removed - now using orchestrator's plot server
@@ -288,6 +290,16 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
             test_plot_system,
             emit_plot_navigator_update,
             serve_plot_image,
+            // Git commands
+            crate::commands::git::git_status,
+            crate::commands::git::git_diff,
+            crate::commands::git::git_stage,
+            crate::commands::git::git_unstage,
+            crate::commands::git::git_commit,
+            crate::commands::git::git_pull,
+            crate::commands::git::git_push,
+            crate::commands::git::git_log,
+            crate::commands::git::git_init,
             // LSP commands
             lsp_hover,
             lsp_notify_did_open,

@@ -41,6 +41,22 @@
       <template #trigger>
         <n-button
           quaternary
+          :type="selectedView === 'source-control' ? 'primary' : 'default'"
+          @click="selectView('source-control')"
+          style="width: 48px; height: 48px"
+        >
+          <n-icon size="24">
+            <GitBranchOutline />
+          </n-icon>
+        </n-button>
+      </template>
+      Source Control
+    </n-tooltip>
+
+    <n-tooltip placement="right" trigger="hover">
+      <template #trigger>
+        <n-button
+          quaternary
           :type="selectedView === 'settings' ? 'primary' : 'default'"
           @click="selectView('settings')"
           style="width: 48px; height: 48px"
@@ -134,6 +150,7 @@ import {
   TerminalOutline,
   FileTrayFullOutline,
   SparklesOutline,
+  GitBranchOutline,
 } from '@vicons/ionicons5';
 import { useLayoutStore } from '../../store/layoutStore';
 import { useAppStore } from '../../store/appStore';
@@ -153,6 +170,8 @@ const selectedView = computed(() => {
       return 'explorer';
     case 'PackageManagement':
       return 'packages';
+    case 'SourceControl':
+      return 'source-control';
     case 'Settings':
       return 'settings';
     case 'About':

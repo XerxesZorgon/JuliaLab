@@ -640,6 +640,9 @@ const handleNavigate = (view) => {
     case 'about':
       router.push({ name: 'About' });
       break;
+    case 'source-control':
+      router.push({ name: 'SourceControl' });
+      break;
     default:
       debug(`MainLayout: Unknown view: ${view}`);
   }
