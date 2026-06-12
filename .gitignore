@@ -22,6 +22,7 @@ output/*
 # OS
 .DS_Store
 Thumbs.db
+~$*
 
 # eurAIka
 .euraika/cache/
