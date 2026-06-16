@@ -206,75 +206,56 @@ pub async fn connect_to_julia_pipe(state: &State, to_julia_pipe: String) -> Resu
     let to_julia_pipe_name = state.to_julia_pipe_name.clone();
     let code_stream = state.code_stream.clone();
     
-    let code_connect_result = tokio::task::spawn(async move {
-        let mut attempts = 0;
-        let max_attempts = 30; // 30 attempts with 200ms delays = 6 seconds total
-        while attempts < max_attempts {
-            let pipe_name = to_julia_pipe_name.lock().await.clone();
-            let pipe_name_for_log = pipe_name.clone();
-            debug!("[CommunicationActor::Connection] Attempting to connect to Julia pipe (to_julia) '{}' (attempt {}/{})", pipe_name_for_log, attempts + 1, max_attempts);
-            
-            // Platform-specific connection logic
-            #[cfg(unix)]
-            {
-                // On Unix/Linux: use standard library UnixStream with filesystem path
-                let socket_path = format!("/tmp/{}", pipe_name_for_log);
-                debug!("[CommunicationActor::Connection] Using filesystem socket path: {}", socket_path);
-                if std::path::Path::new(&socket_path).exists() {
-                    debug!("[CommunicationActor::Connection] Socket file exists at: {}", socket_path);
-                } else {
-                    debug!("[CommunicationActor::Connection] Socket file NOT found at: {} (may not be ready yet)", socket_path);
-                }
-                
-                match LocalSocketStream::connect(&socket_path) {
-                    Ok(stream) => {
-                        debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}' after {} attempts", pipe_name_for_log, attempts + 1);
-                        let mut stream_guard = code_stream.lock().await;
-                        *stream_guard = Some(stream);
-                        return Ok(());
-                    }
-                    Err(e) => {
-                        // Pipe not ready yet, wait and retry
-                        debug!("[CommunicationActor::Connection] To Julia pipe '{}' not ready (attempt {}): {}", pipe_name_for_log, attempts + 1, e);
-                        if attempts < max_attempts - 1 {
-                            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                        }
-                        attempts += 1;
-                    }
-                }
+    let code_connect_result = tokio::task::spawn_blocking(move || {
+        let pipe_name = to_julia_pipe_name.blocking_lock().clone();
+        debug!("[CommunicationActor::Connection] Attempting to connect to Julia pipe (to_julia) '{}' (max 30 attempts)", pipe_name);
+
+        #[cfg(unix)]
+        {
+            let socket_path = format!("/tmp/{}", pipe_name);
+            debug!("[CommunicationActor::Connection] Using filesystem socket path: {}", socket_path);
+            if std::path::Path::new(&socket_path).exists() {
+                debug!("[CommunicationActor::Connection] Socket file exists at: {}", socket_path);
+            } else {
+                debug!("[CommunicationActor::Connection] Socket file NOT found at: {} (may not be ready yet)", socket_path);
             }
-            
-            #[cfg(not(unix))]
-            {
-                // On Windows: use interprocess LocalSocketStream with named pipes
-                match pipe_name_for_log.clone().to_ns_name::<GenericNamespaced>() {
-                    Ok(ns_name) => {
-                        match LocalSocketStream::connect(ns_name) {
-                            Ok(stream) => {
-                                debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}' after {} attempts", pipe_name_for_log, attempts + 1);
-                                let mut stream_guard = code_stream.lock().await;
-                                *stream_guard = Some(stream);
-                                return Ok(());
-                            }
-                            Err(e) => {
-                                debug!("[CommunicationActor::Connection] To Julia pipe '{}' not ready (attempt {}): {}", pipe_name_for_log, attempts + 1, e);
-                                if attempts < max_attempts - 1 {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                                }
-                                attempts += 1;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("[CommunicationActor::Connection] Failed to create namespace name for to_julia pipe '{}': {}", pipe_name_for_log, e);
-                        return Err(format!("Failed to create namespace name for to_julia pipe '{}': {}", pipe_name_for_log, e));
-                    }
-                }
-            }
+            let stream = connect_with_retry(
+                || LocalSocketStream::connect(&socket_path)
+                    .map_err(|e| format!("To Julia pipe '{}' not ready: {}", pipe_name, e)),
+                30,
+                std::time::Duration::from_millis(200),
+            ).map_err(|e| {
+                error!("[CommunicationActor::Connection] Failed to connect to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+                e
+            })?;
+            debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}'", pipe_name);
+            *code_stream.blocking_lock() = Some(stream);
+            Ok(())
         }
-        let pipe_name = to_julia_pipe_name.lock().await.clone();
-        error!("[CommunicationActor::Connection] Failed to connect to Julia pipe (to_julia) '{}' after {} attempts", pipe_name, max_attempts);
-        Err(format!("Failed to connect to Julia pipe (to_julia) '{}' after {} attempts", pipe_name, max_attempts))
+
+        #[cfg(not(unix))]
+        {
+            // Validate namespace name once so invalid names fail fast without consuming retries.
+            pipe_name.clone().to_ns_name::<GenericNamespaced>()
+                .map_err(|e| format!("Failed to create namespace name for to_julia pipe '{}': {}", pipe_name, e))?;
+            let pipe_name_c = pipe_name.clone();
+            let stream = connect_with_retry(
+                || {
+                    let ns = pipe_name_c.clone().to_ns_name::<GenericNamespaced>()
+                        .map_err(|e| format!("to_ns_name '{}': {}", pipe_name_c, e))?;
+                    LocalSocketStream::connect(ns)
+                        .map_err(|e| format!("To Julia pipe '{}' not ready: {}", pipe_name_c, e))
+                },
+                30,
+                std::time::Duration::from_millis(200),
+            ).map_err(|e| {
+                error!("[CommunicationActor::Connection] Failed to connect to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+                e
+            })?;
+            debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+            *code_stream.blocking_lock() = Some(stream);
+            Ok(())
+        }
     }).await;
     
     match code_connect_result {
@@ -328,73 +309,56 @@ pub async fn connect_from_julia_pipe(state: &State, from_julia_pipe: String) -> 
         plot_actor_guard.clone()
     };
     
-    let plot_connect_result = tokio::task::spawn(async move {
-        let mut attempts = 0;
-        let max_attempts = 30; // 30 attempts with 200ms delays = 6 seconds total
-        while attempts < max_attempts {
-            let pipe_name = from_julia_pipe_name.lock().await.clone();
-            let pipe_name_for_log = pipe_name.clone();
-            debug!("[CommunicationActor::Connection] Attempting to connect from Julia pipe (from_julia) '{}' (attempt {}/{})", pipe_name_for_log, attempts + 1, max_attempts);
-            
-            // Platform-specific connection logic
-            #[cfg(unix)]
-            {
-                // On Unix/Linux: use standard library UnixStream with filesystem path
-                let socket_path = format!("/tmp/{}", pipe_name_for_log);
-                debug!("[CommunicationActor::Connection] Using filesystem socket path for from_julia: {}", socket_path);
-                if std::path::Path::new(&socket_path).exists() {
-                    debug!("[CommunicationActor::Connection] From_julia socket file exists at: {}", socket_path);
-                } else {
-                    debug!("[CommunicationActor::Connection] From_julia socket file NOT found at: {} (may not be ready yet)", socket_path);
-                }
-                
-                match LocalSocketStream::connect(&socket_path) {
-                    Ok(stream) => {
-                        debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}' after {} attempts", pipe_name_for_log, attempts + 1);
-                        let mut read_guard = from_julia_read_stream.lock().await;
-                        *read_guard = Some(stream);
-                        return Ok(());
-                    }
-                    Err(e) => {
-                        debug!("[CommunicationActor::Connection] From Julia pipe '{}' not ready (attempt {}): {}", pipe_name_for_log, attempts + 1, e);
-                        if attempts < max_attempts - 1 {
-                            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                        }
-                        attempts += 1;
-                    }
-                }
+    let plot_connect_result = tokio::task::spawn_blocking(move || {
+        let pipe_name = from_julia_pipe_name.blocking_lock().clone();
+        debug!("[CommunicationActor::Connection] Attempting to connect from Julia pipe (from_julia) '{}' (max 30 attempts)", pipe_name);
+
+        #[cfg(unix)]
+        {
+            let socket_path = format!("/tmp/{}", pipe_name);
+            debug!("[CommunicationActor::Connection] Using filesystem socket path for from_julia: {}", socket_path);
+            if std::path::Path::new(&socket_path).exists() {
+                debug!("[CommunicationActor::Connection] From_julia socket file exists at: {}", socket_path);
+            } else {
+                debug!("[CommunicationActor::Connection] From_julia socket file NOT found at: {} (may not be ready yet)", socket_path);
             }
-            
-            #[cfg(not(unix))]
-            {
-                // On Windows: use interprocess LocalSocketStream with named pipes
-                match pipe_name_for_log.clone().to_ns_name::<GenericNamespaced>() {
-                    Ok(ns_name) => {
-                        match LocalSocketStream::connect(ns_name) {
-                            Ok(stream) => {
-                                debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}' after {} attempts", pipe_name_for_log, attempts + 1);
-                                let mut read_guard = from_julia_read_stream.lock().await;
-                                *read_guard = Some(stream);
-                                return Ok(());
-                            }
-                            Err(e) => {
-                                debug!("[CommunicationActor::Connection] From Julia pipe '{}' not ready (attempt {}): {}", pipe_name_for_log, attempts + 1, e);
-                                if attempts < max_attempts - 1 {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                                }
-                                attempts += 1;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("[CommunicationActor::Connection] Failed to create namespace name for from_julia pipe '{}': {}", pipe_name_for_log, e);
-                        return Err(format!("Failed to create namespace name for from_julia pipe '{}': {}", pipe_name_for_log, e));
-                    }
-                }
-            }
+            let stream = connect_with_retry(
+                || LocalSocketStream::connect(&socket_path)
+                    .map_err(|e| format!("From Julia pipe '{}' not ready: {}", pipe_name, e)),
+                30,
+                std::time::Duration::from_millis(200),
+            ).map_err(|e| {
+                error!("[CommunicationActor::Connection] Failed to connect from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+                e
+            })?;
+            debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}'", pipe_name);
+            *from_julia_read_stream.blocking_lock() = Some(stream);
+            Ok(())
         }
-        let pipe_name = from_julia_pipe_name.lock().await.clone();
-        Err(format!("Failed to connect from Julia pipe (from_julia) '{}' after {} attempts", pipe_name, max_attempts))
+
+        #[cfg(not(unix))]
+        {
+            // Validate namespace name once so invalid names fail fast without consuming retries.
+            pipe_name.clone().to_ns_name::<GenericNamespaced>()
+                .map_err(|e| format!("Failed to create namespace name for from_julia pipe '{}': {}", pipe_name, e))?;
+            let pipe_name_c = pipe_name.clone();
+            let stream = connect_with_retry(
+                || {
+                    let ns = pipe_name_c.clone().to_ns_name::<GenericNamespaced>()
+                        .map_err(|e| format!("to_ns_name '{}': {}", pipe_name_c, e))?;
+                    LocalSocketStream::connect(ns)
+                        .map_err(|e| format!("From Julia pipe '{}' not ready: {}", pipe_name_c, e))
+                },
+                30,
+                std::time::Duration::from_millis(200),
+            ).map_err(|e| {
+                error!("[CommunicationActor::Connection] Failed to connect from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+                e
+            })?;
+            debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+            *from_julia_read_stream.blocking_lock() = Some(stream);
+            Ok(())
+        }
     }).await;
     
     match plot_connect_result {
@@ -448,63 +412,49 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
         let to_julia_pipe_name = state.to_julia_pipe_name.clone();
         let code_stream = state.code_stream.clone();
 
-        let code_connect_result = tokio::task::spawn(async move {
-            let mut attempts = 0;
-            let max_attempts = 30; // 30 attempts with 200ms delays = 6 seconds total
-            while attempts < max_attempts {
-                let pipe_name = to_julia_pipe_name.lock().await.clone();
-                let pipe_name_for_log = pipe_name.clone();
-                debug!("[CommunicationActor::Connection] Attempting to connect to Julia pipe (to_julia) '{}' (attempt {}/{})", pipe_name_for_log, attempts + 1, max_attempts);
+        let code_connect_result = tokio::task::spawn_blocking(move || -> Result<(), String> {
+            let pipe_name = to_julia_pipe_name.blocking_lock().clone();
+            debug!("[CommunicationActor::Connection] Attempting to connect to Julia pipe (to_julia) '{}' (max 30 attempts)", pipe_name);
 
-                #[cfg(unix)]
-                {
-                    let socket_path = format!("/tmp/{}", pipe_name_for_log);
-                    match LocalSocketStream::connect(&socket_path) {
-                        Ok(stream) => {
-                            debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) after {} attempts", attempts + 1);
-                            let mut stream_guard = code_stream.lock().await;
-                            *stream_guard = Some(stream);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            debug!("[CommunicationActor::Connection] To Julia pipe not ready (attempt {}): {}", attempts + 1, e);
-                            if attempts < max_attempts - 1 {
-                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                            }
-                            attempts += 1;
-                        }
-                    }
-                }
-                
-                #[cfg(not(unix))]
-                {
-                    match pipe_name_for_log.clone().to_ns_name::<GenericNamespaced>() {
-                        Ok(ns_name) => {
-                            match LocalSocketStream::connect(ns_name) {
-                                Ok(stream) => {
-                                    debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) after {} attempts", attempts + 1);
-                                    let mut stream_guard = code_stream.lock().await;
-                                    *stream_guard = Some(stream);
-                                    return Ok(());
-                                }
-                                Err(e) => {
-                                    debug!("[CommunicationActor::Connection] To Julia pipe not ready (attempt {}): {}", attempts + 1, e);
-                                    if attempts < max_attempts - 1 {
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                                    }
-                                    attempts += 1;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("[CommunicationActor::Connection] Failed to create namespace name for to_julia pipe: {}", e);
-                            return Err(format!("Failed to create namespace name for to_julia pipe: {}", e));
-                        }
-                    }
-                }
+            #[cfg(unix)]
+            {
+                let socket_path = format!("/tmp/{}", pipe_name);
+                let stream = connect_with_retry(
+                    || LocalSocketStream::connect(&socket_path)
+                        .map_err(|e| format!("To Julia pipe '{}' not ready: {}", pipe_name, e)),
+                    30,
+                    std::time::Duration::from_millis(200),
+                ).map_err(|e| {
+                    error!("[CommunicationActor::Connection] Failed to connect to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+                    e
+                })?;
+                debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}'", pipe_name);
+                *code_stream.blocking_lock() = Some(stream);
+                Ok(())
             }
-            let pipe_name = to_julia_pipe_name.lock().await.clone();
-            Err(format!("Failed to connect to Julia pipe (to_julia) '{}' after {} attempts", pipe_name, max_attempts))
+
+            #[cfg(not(unix))]
+            {
+                pipe_name.clone().to_ns_name::<GenericNamespaced>()
+                    .map_err(|e| format!("Failed to create namespace name for to_julia pipe: {}", e))?;
+                let pipe_name_c = pipe_name.clone();
+                let stream = connect_with_retry(
+                    || {
+                        let ns = pipe_name_c.clone().to_ns_name::<GenericNamespaced>()
+                            .map_err(|e| format!("to_ns_name '{}': {}", pipe_name_c, e))?;
+                        LocalSocketStream::connect(ns)
+                            .map_err(|e| format!("To Julia pipe '{}' not ready: {}", pipe_name_c, e))
+                    },
+                    30,
+                    std::time::Duration::from_millis(200),
+                ).map_err(|e| {
+                    error!("[CommunicationActor::Connection] Failed to connect to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+                    e
+                })?;
+                debug!("[CommunicationActor::Connection] Successfully connected to Julia pipe (to_julia) '{}' after 30 attempts", pipe_name);
+                *code_stream.blocking_lock() = Some(stream);
+                Ok(())
+            }
         }).await;
 
         match code_connect_result {
@@ -538,63 +488,49 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
         let from_julia_pipe_name = state.from_julia_pipe_name.clone();
         let from_julia_read_stream = state.from_julia_read_stream.clone();
 
-        let plot_connect_result = tokio::task::spawn(async move {
-            let mut attempts = 0;
-            let max_attempts = 30; // 30 attempts with 200ms delays = 6 seconds total
-            while attempts < max_attempts {
-                let pipe_name = from_julia_pipe_name.lock().await.clone();
-                let pipe_name_for_log = pipe_name.clone();
-                debug!("[CommunicationActor::Connection] Attempting to connect from Julia pipe (from_julia) '{}' (attempt {}/{})", pipe_name_for_log, attempts + 1, max_attempts);
+        let plot_connect_result = tokio::task::spawn_blocking(move || -> Result<(), String> {
+            let pipe_name = from_julia_pipe_name.blocking_lock().clone();
+            debug!("[CommunicationActor::Connection] Attempting to connect from Julia pipe (from_julia) '{}' (max 30 attempts)", pipe_name);
 
-                #[cfg(unix)]
-                {
-                    let socket_path = format!("/tmp/{}", pipe_name_for_log);
-                    match LocalSocketStream::connect(&socket_path) {
-                        Ok(stream) => {
-                            debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) after {} attempts", attempts + 1);
-                            let mut read_guard = from_julia_read_stream.lock().await;
-                            *read_guard = Some(stream);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            debug!("[CommunicationActor::Connection] From Julia pipe not ready (attempt {}): {}", attempts + 1, e);
-                            if attempts < max_attempts - 1 {
-                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                            }
-                            attempts += 1;
-                        }
-                    }
-                }
-                
-                #[cfg(not(unix))]
-                {
-                    match pipe_name_for_log.clone().to_ns_name::<GenericNamespaced>() {
-                        Ok(ns_name) => {
-                            match LocalSocketStream::connect(ns_name) {
-                                Ok(stream) => {
-                                    debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) after {} attempts", attempts + 1);
-                                    let mut read_guard = from_julia_read_stream.lock().await;
-                                    *read_guard = Some(stream);
-                                    return Ok(());
-                                }
-                                Err(e) => {
-                                    debug!("[CommunicationActor::Connection] From Julia pipe not ready (attempt {}): {}", attempts + 1, e);
-                                    if attempts < max_attempts - 1 {
-                                        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-                                    }
-                                    attempts += 1;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            error!("[CommunicationActor::Connection] Failed to create namespace name for from_julia pipe: {}", e);
-                            return Err(format!("Failed to create namespace name for from_julia pipe: {}", e));
-                        }
-                    }
-                }
+            #[cfg(unix)]
+            {
+                let socket_path = format!("/tmp/{}", pipe_name);
+                let stream = connect_with_retry(
+                    || LocalSocketStream::connect(&socket_path)
+                        .map_err(|e| format!("From Julia pipe '{}' not ready: {}", pipe_name, e)),
+                    30,
+                    std::time::Duration::from_millis(200),
+                ).map_err(|e| {
+                    error!("[CommunicationActor::Connection] Failed to connect from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+                    e
+                })?;
+                debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}'", pipe_name);
+                *from_julia_read_stream.blocking_lock() = Some(stream);
+                Ok(())
             }
-            let pipe_name = from_julia_pipe_name.lock().await.clone();
-            Err(format!("Failed to connect from Julia pipe (from_julia) '{}' after {} attempts", pipe_name, max_attempts))
+
+            #[cfg(not(unix))]
+            {
+                pipe_name.clone().to_ns_name::<GenericNamespaced>()
+                    .map_err(|e| format!("Failed to create namespace name for from_julia pipe: {}", e))?;
+                let pipe_name_c = pipe_name.clone();
+                let stream = connect_with_retry(
+                    || {
+                        let ns = pipe_name_c.clone().to_ns_name::<GenericNamespaced>()
+                            .map_err(|e| format!("to_ns_name '{}': {}", pipe_name_c, e))?;
+                        LocalSocketStream::connect(ns)
+                            .map_err(|e| format!("From Julia pipe '{}' not ready: {}", pipe_name_c, e))
+                    },
+                    30,
+                    std::time::Duration::from_millis(200),
+                ).map_err(|e| {
+                    error!("[CommunicationActor::Connection] Failed to connect from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+                    e
+                })?;
+                debug!("[CommunicationActor::Connection] Successfully connected from Julia pipe (from_julia) '{}' after 30 attempts", pipe_name);
+                *from_julia_read_stream.blocking_lock() = Some(stream);
+                Ok(())
+            }
         }).await;
 
         match plot_connect_result {
@@ -654,6 +590,35 @@ async fn connect_to_julia_pipes(state: &State) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+/// Synchronous retry helper for named-pipe connection attempts.
+/// MUST be called inside `tokio::task::spawn_blocking` — `std::thread::sleep` would
+/// block an async worker thread if called from `tokio::task::spawn`.
+/// Validate namespace names (e.g. `to_ns_name`) *before* calling this so that
+/// invalid-name errors fail fast without consuming retries.
+fn connect_with_retry<S>(
+    mut connect: impl FnMut() -> Result<S, String>,
+    max_attempts: u32,
+    delay: std::time::Duration,
+) -> Result<S, String> {
+    let mut last_err = String::new();
+    for attempt in 1..=max_attempts {
+        match connect() {
+            Ok(s) => return Ok(s),
+            Err(e) => {
+                debug!(
+                    "[CommunicationActor::Connection] connect_with_retry: attempt {}/{} failed: {}",
+                    attempt, max_attempts, e
+                );
+                last_err = e;
+                if attempt < max_attempts {
+                    std::thread::sleep(delay);
+                }
+            }
+        }
+    }
+    Err(last_err)
 }
 
 /// Read messages from Julia via the from_julia pipe
@@ -793,4 +758,57 @@ async fn read_from_julia_messages(
     debug!("[CommunicationActor::Connection] from_julia message reader ended");
 }
 
+#[cfg(test)]
+mod tests {
+    use super::connect_with_retry;
 
+    /// Regression: the four pipe-connect retry loops must execute inside
+    /// `tokio::task::spawn_blocking`, not `tokio::task::spawn`.
+    ///
+    /// On a `current_thread` runtime there is exactly one async worker thread.
+    /// A blocking syscall (e.g. `CreateFile`/`WaitNamedPipe` on Windows) placed
+    /// directly inside `tokio::task::spawn(async { blocking_call })` occupies that
+    /// single thread — no other async tasks can run until it returns.
+    /// `spawn_blocking` offloads to a dedicated blocking-thread pool and keeps the
+    /// async worker free.
+    ///
+    /// This test calls the real production wrapper path
+    /// (`spawn_blocking` + `connect_with_retry`) with an injected connect fn that
+    /// does `std::thread::sleep(500 ms)` then returns `Err` (simulating WaitNamedPipe).
+    /// Three attempts × 500 ms = ≥1 500 ms of blocking on the calling thread.
+    /// A concurrent 100 ms async sleep must complete well under 500 ms — proving the
+    /// async worker was never stalled.
+    ///
+    /// If the code ever regresses to `tokio::task::spawn(async { connect_with_retry(...) })`,
+    /// the injected blocking sleep occupies the sole async thread, the 100 ms sleep
+    /// stalls for ≥500 ms, and the assertion fires.
+    #[tokio::test(flavor = "current_thread")]
+    async fn connect_retry_does_not_block_runtime() {
+        let blocking_task = tokio::task::spawn_blocking(|| {
+            // Inject a connect fn that simulates WaitNamedPipe: 500 ms blocking per attempt.
+            connect_with_retry(
+                || {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    Err::<(), String>("simulated WaitNamedPipe timeout".to_string())
+                },
+                3, // 3 attempts × 500 ms = 1 500 ms total blocking
+                std::time::Duration::from_millis(1),
+            )
+        });
+
+        // Must complete in well under 500 ms — spawn_blocking keeps the async thread free.
+        let start = std::time::Instant::now();
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        let elapsed = start.elapsed();
+
+        assert!(
+            elapsed < std::time::Duration::from_millis(400),
+            "Async sleep stalled for {:?} — retry loop is blocking the async worker thread \
+             (regression: connect loops must use spawn_blocking, not tokio::task::spawn)",
+            elapsed
+        );
+
+        // Allow the blocking task to finish (it returns Err, which is expected).
+        let _ = blocking_task.await;
+    }
+}

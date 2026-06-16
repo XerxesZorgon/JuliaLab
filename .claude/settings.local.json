@@ -11,7 +11,9 @@
       "Bash(curl -s \"https://raw.githubusercontent.com/elan8/compute42/master/app/src/theme/index.ts\")",
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
-      "Bash(ls -la \"c:\\\\Users\\\\johnx\\\\Documents\\\\WildPeaches\\\\Projects\\\\JuliaLab\\\\.github\\\\workflows\"\" 2>/dev/null || echo \"No workflows directory found \")"
+      "Bash(ls -la \"c:\\\\Users\\\\johnx\\\\Documents\\\\WildPeaches\\\\Projects\\\\JuliaLab\\\\.github\\\\workflows\"\" 2>/dev/null || echo \"No workflows directory found \")",
+      "Bash(cargo build *)",
+      "Bash(cargo test *)"
     ]
   }
 }
