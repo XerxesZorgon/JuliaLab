@@ -301,10 +301,15 @@ impl Handler<DisconnectFromPipes> for CommunicationActor {
     fn handle(&mut self, _msg: DisconnectFromPipes, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("CommunicationActor: Received DisconnectFromPipes message");
         
+        // Update actor state immediately
+        self.is_connected = false;
+        self.to_julia_pipe = None;
+        self.from_julia_pipe = None;
+        
         // Use async spawn for disconnect
         let state = self.state.clone();
         let event_manager = self.event_manager.clone();
-        // Spawn async task to disconnect - we don't need to update actor state here
+        // Spawn async task to disconnect
         // so we use tokio::spawn instead of ctx.spawn to avoid lifetime issues
         tokio::spawn(async move {
             debug!("CommunicationActor: Disconnecting from pipes in async task");
