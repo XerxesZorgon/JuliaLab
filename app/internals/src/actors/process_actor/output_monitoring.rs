@@ -69,6 +69,7 @@ pub fn start_stdout_monitoring(
                 !*suppressed
             };
             if should_emit {
+                debug!("[Julia stdout] {}", line);
                 if let Err(e) = event_emitter.emit(
                     "julia:output",
                     serde_json::to_value(vec![crate::messages::StreamOutput {
@@ -422,6 +423,7 @@ pub fn start_stderr_monitoring(
                 !*suppressed
             };
             if should_emit {
+                error!("[Julia stderr] {}", line);
                 if let Err(e) = event_emitter.emit(
                     "julia:output",
                     serde_json::to_value(vec![crate::messages::StreamOutput {
