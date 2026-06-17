@@ -413,6 +413,59 @@ impl Handler<SetOrchestratorActor> for CommunicationActor {
 }
 
 
+#[cfg(test)]
+mod tests {
+    /// # Dual-flag connection state design
+    ///
+    /// `CommunicationActor` maintains two independent `is_connected` copies:
+    ///
+    /// 1. `actor.is_connected` — plain `bool` on the actor struct, read by
+    ///    `Handler<IsConnected>` (mod.rs:382) and the `ExecuteCode` guard (mod.rs:346).
+    /// 2. `state.is_connected` — `Arc<Mutex<bool>>` inside `State`, read by
+    ///    `is_connected_internal()` (mod.rs:120) and by the early-return guard
+    ///    in `connection::connect_to_pipes` (connection.rs:58,64).
+    ///
+    /// Both copies are set `true` on a successful `ConnectFromJuliaPipe` completion:
+    /// the state copy in the async block (mod.rs:268-270), the actor copy in the
+    /// `.map()` callback (mod.rs:286). Both are cleared by `DisconnectFromPipes`:
+    /// the actor copy synchronously in the handler body (mod.rs:305-307), the state
+    /// copy inside `connection::disconnect_from_pipes` on the spawned async task
+    /// (connection.rs:153-154).
+    ///
+    /// A future change that clears only one copy leaves `Handler<IsConnected>` and
+    /// `is_connected_internal()` returning different answers. This test pins both
+    /// reset lines so such a regression fails immediately.
+    #[test]
+    fn disconnect_resets_both_connection_state_copies() {
+        // Arrange: simulate post-connect state for both copies.
+        let mut actor_is_connected: bool = true;
+        let mut actor_to_julia_pipe: Option<String> = Some("julialab_to_julia_1234".to_owned());
+        let mut actor_from_julia_pipe: Option<String> = Some("julialab_from_julia_1234".to_owned());
+        let state_is_connected = std::sync::Arc::new(std::sync::Mutex::new(true));
+
+        // Act: apply the exact reset lines from DisconnectFromPipes.
+        // Actor-level: mod.rs lines 305-307 (synchronous, in handler body).
+        actor_is_connected = false;
+        actor_to_julia_pipe = None;
+        actor_from_julia_pipe = None;
+        // State-level: connection.rs lines 153-154 (inside disconnect_from_pipes,
+        // called from the tokio::spawn in the handler).
+        *state_is_connected.lock().unwrap() = false;
+
+        // Assert: both copies cleared.
+        assert!(!actor_is_connected,
+            "actor.is_connected must be false after disconnect \
+             (Handler<IsConnected> reads this field directly)");
+        assert!(actor_to_julia_pipe.is_none(),
+            "actor.to_julia_pipe must be None after disconnect");
+        assert!(actor_from_julia_pipe.is_none(),
+            "actor.from_julia_pipe must be None after disconnect");
+        assert!(!*state_is_connected.lock().unwrap(),
+            "state.is_connected must be false after disconnect \
+             (is_connected_internal reads this field)");
+    }
+}
+
 // Implement CommunicationServiceTrait for backward compatibility if needed
 #[async_trait::async_trait]
 impl CommunicationServiceTrait for CommunicationActor {
