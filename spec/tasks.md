@@ -184,6 +184,38 @@
 
 ## ~~Task 4 — Apps Tab~~
 
+## Task 004: Patch — Persist Julia stdout/stderr to app.log
+**Status:** [ ] Pending
+**Tier:** 1 — Patch
+**Milestone:** Cleanup Sprint
+**Depends on:** —
+
+### What to do
+In `app/internals/src/actors/process_actor/output_monitoring.rs`,
+in the loops inside `start_stdout_monitoring` and
+`start_stderr_monitoring`, add a log call immediately before each
+`emit(...)` call. stdout lines: `debug!("[Julia stdout] {}", line)`.
+stderr lines: `error!("[Julia stderr] {}", line)`. Do not change
+anything else — event names, payloads, timing, or control flow.
+
+### Files touched
+- `app/internals/src/actors/process_actor/output_monitoring.rs`
+
+### Acceptance Criterion
+After a cold start, `app/target/debug/logs/<today>-app.log` contains
+lines matching `[Julia stdout]` and `[Julia stderr]`, including the
+full startup backtrace that previously appeared only in the xterm
+buffer. Binary: the backtrace's ERROR header (frames [1]–[2] that
+were previously wiped) is readable in the log file.
+
+### On Failure
+```
+TASK 004 FAILED
+Criterion: [criterion text]
+Observed: [what happened]
+Error: [full output]
+```
+
 ### ~~4a — Store + Toolbar~~
 
 - [ ] ~~Read~~ `app/app/src/store/layoutStore.ts`
