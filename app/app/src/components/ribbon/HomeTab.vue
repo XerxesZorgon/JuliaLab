@@ -119,7 +119,7 @@
         </RibbonBtn>
       </div>
       <div class="ribbon-col">
-        <RibbonBtn label="Restart Julia" @click="restartJulia" :disabled="true">
+        <RibbonBtn label="Restart Julia" @click="restartJulia">
           <template #icon>
             <n-icon size="20"><RefreshOutline /></n-icon>
           </template>
