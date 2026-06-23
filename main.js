@@ -5,6 +5,7 @@
 
 const { app, BaseWindow, WebContentsView, ipcMain, dialog } = require('electron');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const state = {
   win:           null,
@@ -14,6 +15,47 @@ const state = {
   serverPort:    null,
   shuttingDown:  false,
 };
+
+const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
+const SERVER_PORT    = 3456;
+const SERVER_DATA_DIR = path.join(__dirname, 'server-data');
+const READY_RE       = /Web UI available at/;
+const TIMEOUT_MS     = 30000;
+
+function spawnServer() {
+  state.serverPort = SERVER_PORT;
+  state.serverProcess = spawn('cmd.exe', [
+    '/c', CODIUM_BIN + '.cmd',
+    'serve-web',
+    '--host',            '127.0.0.1',
+    '--port',            String(SERVER_PORT),
+    '--server-data-dir', SERVER_DATA_DIR,
+    '--without-connection-token',
+  ], { stdio: ['ignore', 'pipe', 'pipe'], shell: false });
+
+  state.serverProcess.stderr.on('data', d => process.stderr.write(d));
+  return state.serverProcess;
+}
+
+function waitForReady(proc) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Server timeout after 30s')), TIMEOUT_MS
+    );
+    proc.stdout.on('data', chunk => {
+      const line = chunk.toString();
+      process.stdout.write('[server] ' + line);
+      if (READY_RE.test(line)) { clearTimeout(timer); resolve(line.trim()); }
+    });
+    proc.on('error', err  => { clearTimeout(timer); reject(err); });
+    proc.on('exit',  code => {
+      if (code !== 0) {
+        clearTimeout(timer);
+        reject(new Error(`Server exited with code ${code}`));
+      }
+    });
+  });
+}
 
 function debounce(fn, ms) {
   let timer;
@@ -60,7 +102,17 @@ function createWindow() {
   state.win.show();
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  const proc = spawnServer();
+  try {
+    await waitForReady(proc);
+  } catch (err) {
+    state.serverProcess?.kill('SIGTERM');
+    dialog.showErrorBox('JuliaLab — Server Error',
+      `codium serve-web failed to start:\n${err.message}`);
+    app.exit(1);
+    return;
+  }
   createWindow();
 });
 
