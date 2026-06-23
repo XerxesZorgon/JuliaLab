@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { app, BaseWindow, ipcMain } = require('electron');
+const { app, BaseWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 const state = {
@@ -22,7 +22,18 @@ function createWindow() {
     frame:           false,
     show:            false,
     backgroundColor: '#1e1e1e',
+    webPreferences: {
+      preload:          path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+    },
   });
+
+  ipcMain.on('window:minimize', () => state.win.minimize());
+  ipcMain.on('window:maximize', () => {
+    state.win.isMaximized() ? state.win.unmaximize() : state.win.maximize();
+  });
+  ipcMain.on('window:close',   () => app.quit());
 
   state.win.show();
 }
