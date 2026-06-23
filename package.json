@@ -1,0 +1,12 @@
+{
+  "name": "julialab-app",
+  "version": "0.1.0",
+  "description": "MATLAB-familiar Julia IDE — VSCodium in a single Electron window",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "39.8.8"
+  }
+}
