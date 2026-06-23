@@ -1,0 +1,76 @@
+:root {
+  --ribbon-height: 52px;
+}
+
+/* JuliaLabApp — Ribbon styles */
+/* MATLAB R2023b+ geometry */
+
+#ribbon {
+  display: flex;
+  align-items: stretch;
+  height: var(--ribbon-height);
+  background: #f3f3f3;
+  border-bottom: 1px solid #d0d0d0;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+#ribbon-tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  -webkit-app-region: drag;
+}
+
+.ribbon-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 100%;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  color: #333333;
+  cursor: default;
+  border-bottom: 2px solid transparent;
+  -webkit-app-region: no-drag;
+}
+
+.ribbon-tab.active {
+  color: #0078d4;
+  border-bottom: 2px solid #0078d4;
+}
+
+.ribbon-tab:hover:not(.active) {
+  background: #e8e8e8;
+  color: #000000;
+}
+
+#win-controls {
+  display: flex;
+  align-items: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn {
+  width: 46px;
+  height: var(--ribbon-height);
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #333333;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.win-btn:hover {
+  background: #e5e5e5;
+}
+
+#btn-close:hover {
+  background: #e81123;
+  color: #ffffff;
+}

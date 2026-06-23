@@ -35,6 +35,7 @@ function createWindow() {
   });
   ipcMain.on('window:close',   () => app.quit());
 
+  state.win.loadFile(path.join(__dirname, 'index.html'));
   state.win.show();
 }
 
