@@ -15,6 +15,18 @@ const state = {
   shuttingDown:  false,
 };
 
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+function setViewBounds() {
+  if (!state.win || !state.ribbonView) return;
+  const [w, h] = state.win.getContentSize();
+  const ribbonH = 52;
+  state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: ribbonH });
+}
+
 function createWindow() {
   state.win = new BaseWindow({
     width:           1280,
@@ -44,6 +56,7 @@ function createWindow() {
     height: 800,
   });
   state.ribbonView.webContents.loadFile(path.join(__dirname, 'index.html'));
+  state.win.on('resize', debounce(setViewBounds, 16));
   state.win.show();
 }
 
