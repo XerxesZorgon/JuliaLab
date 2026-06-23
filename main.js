@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { app, BaseWindow, ipcMain, dialog } = require('electron');
+const { app, BaseWindow, WebContentsView, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 const state = {
@@ -22,11 +22,6 @@ function createWindow() {
     frame:           false,
     show:            false,
     backgroundColor: '#1e1e1e',
-    webPreferences: {
-      preload:          path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration:  false,
-    },
   });
 
   ipcMain.on('window:minimize', () => state.win.minimize());
@@ -35,7 +30,20 @@ function createWindow() {
   });
   ipcMain.on('window:close',   () => app.quit());
 
-  state.win.loadFile(path.join(__dirname, 'index.html'));
+  state.ribbonView = new WebContentsView({
+    webPreferences: {
+      preload:          path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration:  false,
+    },
+  });
+  state.win.contentView.addChildView(state.ribbonView);
+  state.ribbonView.setBounds({
+    x: 0, y: 0,
+    width:  1280,
+    height: 800,
+  });
+  state.ribbonView.webContents.loadFile(path.join(__dirname, 'index.html'));
   state.win.show();
 }
 
