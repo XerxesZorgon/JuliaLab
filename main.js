@@ -94,7 +94,19 @@ async function killServer() {
     }, 2000);
     state.serverProcess.on('exit', () => { clearTimeout(t); resolve(); });
   });
+  state.ribbonWs?.close();
+  state.ribbonWs = null;
   state.serverProcess = null;
+}
+
+function connectRibbonWebSocket() {
+  const tryConnect = () => {
+    const ws = new WebSocket('ws://127.0.0.1:' + RIBBON_WS_PORT);
+    ws.on('open',  ()  => { state.ribbonWs = ws; console.log('[ribbon-ws] connected'); });
+    ws.on('close', ()  => { state.ribbonWs = null; setTimeout(tryConnect, 2000); });
+    ws.on('error', ()  => { /* retry handled by close event */ });
+  };
+  setTimeout(tryConnect, 5000);
 }
 
 function createWindow() {
@@ -111,6 +123,15 @@ function createWindow() {
     state.win.isMaximized() ? state.win.unmaximize() : state.win.maximize();
   });
   ipcMain.on('window:close',   () => app.quit());
+
+  ipcMain.on('ribbon-command', (_event, command) => {
+    if (state.ribbonWs?.readyState === WebSocket.OPEN) {
+      state.ribbonWs.send(JSON.stringify({ command }));
+      console.log('[ribbon-command] sent:', command);
+    } else {
+      console.warn('[ribbon-command] WebSocket not ready, command dropped:', command);
+    }
+  });
 
   app.on('before-quit', async (e) => {
     if (state.shuttingDown) return;
@@ -182,6 +203,7 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+  connectRibbonWebSocket();
 });
 
 app.on('window-all-closed', () => {
