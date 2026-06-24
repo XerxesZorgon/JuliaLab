@@ -22,12 +22,12 @@
 <body>
   <div id="ribbon">
     <div id="ribbon-tabs">
-      <span class="ribbon-tab active">HOME</span>
-      <span class="ribbon-tab">PLOTS</span>
-      <span class="ribbon-tab">APPS</span>
-      <span class="ribbon-tab">LIVE EDITOR</span>
-      <span class="ribbon-tab">INSERT</span>
-      <span class="ribbon-tab">VIEW</span>
+      <span class="ribbon-tab active" data-command="julialab.focusEditor">HOME</span>
+      <span class="ribbon-tab"        data-command="julialab.showPlots">PLOTS</span>
+      <span class="ribbon-tab"        data-command="noop">APPS</span>
+      <span class="ribbon-tab"        data-command="noop">LIVE EDITOR</span>
+      <span class="ribbon-tab"        data-command="noop">INSERT</span>
+      <span class="ribbon-tab"        data-command="noop">VIEW</span>
     </div>
     <div id="win-controls">
       <button class="win-btn" id="btn-minimize">&#x2500;</button>
