@@ -1,5 +1,6 @@
 {
   "name": "julialab",
+  "publisher": "julialab",
   "displayName": "JuliaLab",
   "description": "JuliaLab IDE integration — auto-start, layout, ribbon bridge",
   "version": "0.1.0",
