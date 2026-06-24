@@ -4,3 +4,8 @@ dist/
 spike-server-data/
 server-data/data/
 server-data/extensions/
+
+# Sprint 3 — julialab extension build artefacts
+extensions/julialab/dist/
+extensions/julialab/node_modules/
+server-data/extensions/julialab/
