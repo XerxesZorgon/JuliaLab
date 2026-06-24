@@ -72,6 +72,20 @@ function setViewBounds() {
   }
 }
 
+async function killServer() {
+  if (!state.serverProcess) return;
+  state.shuttingDown = true;
+  state.serverProcess.kill('SIGTERM');
+  await new Promise(resolve => {
+    const t = setTimeout(() => {
+      state.serverProcess?.kill('SIGKILL');
+      resolve();
+    }, 2000);
+    state.serverProcess.on('exit', () => { clearTimeout(t); resolve(); });
+  });
+  state.serverProcess = null;
+}
+
 function createWindow() {
   state.win = new BaseWindow({
     width:           1280,
@@ -86,6 +100,13 @@ function createWindow() {
     state.win.isMaximized() ? state.win.unmaximize() : state.win.maximize();
   });
   ipcMain.on('window:close',   () => app.quit());
+
+  app.on('before-quit', async (e) => {
+    if (state.shuttingDown) return;
+    e.preventDefault();
+    await killServer();
+    app.exit(0);
+  });
 
   state.ribbonView = new WebContentsView({
     webPreferences: {
