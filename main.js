@@ -67,6 +67,9 @@ function setViewBounds() {
   const [w, h] = state.win.getContentSize();
   const ribbonH = 52;
   state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: ribbonH });
+  if (state.workbenchView) {
+    state.workbenchView.setBounds({ x: 0, y: ribbonH, width: w, height: h - ribbonH });
+  }
 }
 
 function createWindow() {
@@ -98,6 +101,12 @@ function createWindow() {
     height: 800,
   });
   state.ribbonView.webContents.loadFile(path.join(__dirname, 'index.html'));
+  state.workbenchView = new WebContentsView();
+  state.win.contentView.addChildView(state.workbenchView);
+  setViewBounds();
+  state.workbenchView.webContents.loadURL(
+    `http://127.0.0.1:${state.serverPort}`
+  );
   state.win.on('resize', debounce(setViewBounds, 16));
   state.win.show();
 }
