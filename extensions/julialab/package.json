@@ -1,0 +1,31 @@
+{
+  "name": "julialab",
+  "displayName": "JuliaLab",
+  "description": "JuliaLab IDE integration — auto-start, layout, ribbon bridge",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "julialab.focusEditor",
+        "title": "JuliaLab: Focus Editor"
+      },
+      {
+        "command": "julialab.showPlots",
+        "title": "JuliaLab: Show Plot Pane"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch":   "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/ws":     "^8.5.0",
+    "typescript":    "^5.4.0"
+  }
+}
