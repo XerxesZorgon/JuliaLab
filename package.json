@@ -4,12 +4,14 @@
   "description": "MATLAB-familiar Julia IDE — VSCodium in a single Electron window",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
-  },
-  "devDependencies": {
-    "electron": "39.8.8"
+    "build:ext":   "cd extensions/julialab && npm install && npm run compile && cd ../.. && node scripts/copy-extension.js",
+    "start":       "npm run build:ext && electron .",
+    "start:fast":  "electron ."
   },
   "dependencies": {
     "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "electron": "39.8.8"
   }
 }
