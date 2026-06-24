@@ -143,6 +143,15 @@ app.whenReady().then(async () => {
     app.exit(1);
     return;
   }
+  state.serverProcess.on('exit', (code, signal) => {
+    if (state.shuttingDown) return;
+    dialog.showErrorBox(
+      'JuliaLab — Server Crashed',
+      `codium serve-web exited unexpectedly (code ${code}, signal ${signal}).\nPlease restart JuliaLab.`
+    );
+    app.exit(1);
+  });
+
   createWindow();
 });
 
