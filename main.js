@@ -3,9 +3,10 @@
 
 'use strict';
 
-const { app, BaseWindow, WebContentsView, ipcMain, dialog } = require('electron');
+const { app, BaseWindow, WebContentsView, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const { detectDeps } = require('./scripts/detect-deps');
 
 const state = {
   win:           null,
@@ -133,6 +134,24 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  const depsResult = await detectDeps(
+    path.join(__dirname, 'server-data', 'Machine', 'settings.json')
+  );
+  if (depsResult.warnings.length > 0) {
+    const choice = await dialog.showMessageBox({
+      type:    'warning',
+      title:   'JuliaLab — Missing Dependencies',
+      message: depsResult.warnings.join('\n\n'),
+      detail:  'JuliaLab will launch. Install missing tools and restart to enable full functionality.',
+      buttons: ['Continue anyway', 'Open install pages'],
+    });
+    if (choice.response === 1) {
+      for (const url of depsResult.installUrls) {
+        shell.openExternal(url);
+      }
+    }
+  }
+
   const proc = spawnServer();
   try {
     await waitForReady(proc);
