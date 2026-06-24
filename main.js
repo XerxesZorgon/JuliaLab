@@ -8,6 +8,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { detectDeps } = require('./scripts/detect-deps');
 
+const os = require('os');
+const fs = require('fs');
+const { WebSocket } = require('ws');
+
+const DEFAULT_WORKSPACE = path.join(os.homedir(), 'JuliaLab');
+const RIBBON_WS_PORT    = 2999;
+
 const state = {
   win:           null,
   ribbonView:    null,
@@ -15,6 +22,7 @@ const state = {
   serverProcess: null,
   serverPort:    null,
   shuttingDown:  false,
+  ribbonWs:      null,
 };
 
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
@@ -24,6 +32,7 @@ const READY_RE       = /Web UI available at/;
 const TIMEOUT_MS     = 30000;
 
 function spawnServer() {
+  fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
   state.serverPort = SERVER_PORT;
   state.serverProcess = spawn('cmd.exe', [
     '/c', CODIUM_BIN + '.cmd',
@@ -32,6 +41,7 @@ function spawnServer() {
     '--port',            String(SERVER_PORT),
     '--server-data-dir', SERVER_DATA_DIR,
     '--without-connection-token',
+    '--default-folder',  DEFAULT_WORKSPACE,
   ], { stdio: ['ignore', 'pipe', 'pipe'], shell: false });
 
   state.serverProcess.stderr.on('data', d => process.stderr.write(d));
