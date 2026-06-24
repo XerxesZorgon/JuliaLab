@@ -2,3 +2,5 @@ node_modules/
 spike/
 dist/
 spike-server-data/
+server-data/data/
+server-data/extensions/
