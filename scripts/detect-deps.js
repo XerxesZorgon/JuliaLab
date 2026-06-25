@@ -147,21 +147,26 @@ async function detectDeps(settingsPath) {
     detectLean4(),
   ]);
 
-  // Read existing settings
-  let settings = {};
+  const detected = {};
+  if (juliaPath)   detected['julia.executablePath']      = juliaPath;
+  if (lean4Path)   detected['lean4.toolchainPath']       = lean4Path;
+  if (wolframPath) detected['wolfbook.wolframKernelPath'] = wolframPath;
+  detected['workbench.statusBar.visible'] = true;
+
+  // Read existing settings to preserve manually added keys
+  let existing = {};
   try {
-    settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-  } catch { /* start fresh */ }
+    existing = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch (_) {
+    // File doesn't exist yet or is invalid — start fresh
+  }
 
-  // Write discovered paths into settings
-  if (juliaPath)   settings['julia.executablePath']      = juliaPath;
-  if (lean4Path)   settings['lean4.toolchainPath']       = lean4Path;
-  if (wolframPath) settings['wolfbook.wolframKernelPath'] = wolframPath;
+  // Merge detected paths into existing settings (detected values overwrite
+  // only their own keys; all other keys are preserved)
+  const merged = Object.assign({}, existing, detected);
 
-  // Always keep status bar enabled
-  settings['workbench.statusBar.visible'] = true;
-
-  fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+  fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2));
+  const settings = merged;
   console.log('[detect-deps] Settings written to', settingsPath);
 
   // Build warnings for missing tools
