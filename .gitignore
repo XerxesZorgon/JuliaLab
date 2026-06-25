@@ -9,3 +9,9 @@ server-data/extensions/
 extensions/julialab/dist/
 extensions/julialab/node_modules/
 server-data/extensions/julialab/
+
+# IDE and tool artefacts
+.codex/
+.cursor/
+.mcp.json
+.vscode/
