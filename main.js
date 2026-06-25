@@ -10,6 +10,7 @@ const { detectDeps } = require('./scripts/detect-deps');
 
 const os = require('os');
 const fs = require('fs');
+const net = require('net');
 const { WebSocket } = require('ws');
 
 const DEFAULT_WORKSPACE = path.join(os.homedir(), 'JuliaLab');
@@ -26,19 +27,30 @@ const state = {
 };
 
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
-const SERVER_PORT    = 3456;
 const SERVER_DATA_DIR = path.join(__dirname, 'server-data');
 const READY_RE       = /Web UI available at/;
 const TIMEOUT_MS     = 30000;
 
-function spawnServer() {
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+async function spawnServer() {
   fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
-  state.serverPort = SERVER_PORT;
+  state.serverPort = await findFreePort();
+  console.log('[server] using dynamic port ' + state.serverPort);
   state.serverProcess = spawn('cmd.exe', [
     '/c', CODIUM_BIN + '.cmd',
     'serve-web',
     '--host',            '127.0.0.1',
-    '--port',            String(SERVER_PORT),
+    '--port',            String(state.serverPort),
     '--server-data-dir', SERVER_DATA_DIR,
     '--without-connection-token',
     '--default-folder',  DEFAULT_WORKSPACE,
@@ -183,7 +195,7 @@ app.whenReady().then(async () => {
     }
   }
 
-  const proc = spawnServer();
+  const proc = await spawnServer();
   try {
     await waitForReady(proc);
   } catch (err) {
