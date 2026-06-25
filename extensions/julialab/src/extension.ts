@@ -10,7 +10,7 @@ const LAYOUT_DONE_KEY = 'julialab.layoutApplied';
 const RIBBON_WS_PORT  = 2999;
 
 const RIBBON_COMMANDS: Record<string, string> = {
-  'julialab.focusEditor': 'workbench.action.focusFirstEditorGroup',
+  'julialab.focusEditor': 'workbench.action.focusActiveEditorGroup',
   'julialab.showPlots':   'language-julia.show-plotpane',
 };
 
