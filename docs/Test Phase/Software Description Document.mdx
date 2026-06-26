@@ -1,0 +1,69 @@
+# Software Description Document
+
+**Project:** JuliaLabShell — Electron/VSCodium Chrome Proof-of-Concept **Version:** 0.1 **Date:** 2026-06-22 **Author:** John Peach / eurAIka
+
+------
+
+## 1. Purpose
+
+JuliaLabShell proves that a custom Electron shell can embed VSCodium as its editor surface while replacing VSCodium's native title bar and menu bar with an owner-controlled MATLAB-style ribbon — without forking VSCodium's internals. This PoC is the architectural gate for a full JuliaLab rewrite (Option C): if the chrome replacement works cleanly, the rewrite proceeds; if it does not, the rewrite is abandoned before significant investment.
+
+## 2. Users and Use Cases
+
+| User                       | Use Case                                                     | Priority |
+| -------------------------- | ------------------------------------------------------------ | -------- |
+| JuliaLab architect (John)  | Validate Option C architecture before committing to rewrite  | High     |
+| Future JuliaLab developers | Reference implementation for Electron↔VSCodium embedding pattern | Medium   |
+
+## 3. Key Features
+
+1. **Frameless Electron window** — native OS title bar suppressed; app owns the entire window chrome.
+2. **Custom ribbon header** — static HTML/CSS bar occupying the top of the window, styled to match MATLAB R2023b+ ribbon geometry and tab structure (HOME / PLOTS / APPS / LIVE EDITOR / INSERT / VIEW).
+3. **Embedded VSCodium** — VSCodium renders in the remaining window area below the ribbon, with its own title bar and menu bar hidden.
+4. **Functional VSCodium core** — editor, integrated terminal, and file tree work normally inside the embedded surface.
+5. **Window controls** — minimize, maximize, close buttons in the ribbon (replacing the suppressed OS controls).
+
+## 4. Non-Goals
+
+- Julia, Lean4, Wolfram Language, or Claude Code integration
+- Ribbon button functionality (tabs are visual only; no command wiring)
+- Extension installation, configuration, or management
+- JuliaLab-specific panels (workspace variable table, plot panel)
+- macOS or Linux support
+- Packaging or distribution (dev-mode launch only)
+
+## 5. Success Criteria
+
+| #    | Criterion            | Pass Condition                                               |
+| ---- | -------------------- | ------------------------------------------------------------ |
+| SC-1 | Single header        | Exactly one header row visible — the custom ribbon. No VSCodium title bar or menu bar visible. |
+| SC-2 | VSCodium functional  | VSCodium editor opens a file, integrated terminal launches, file tree renders — all within the embedded surface. |
+| SC-3 | Window controls work | Minimize, maximize, and close buttons in the ribbon operate the Electron window correctly. |
+| SC-4 | No double chrome     | Screenshot shows ribbon → editor content with no gap, duplicate bar, or VSCodium menu visible. |
+
+All four criteria must pass. Any single failure = PoC fails.
+
+## 6. Constraints
+
+| Dimension         | Constraint                                                   |
+| ----------------- | ------------------------------------------------------------ |
+| Platform          | Windows 10 x64 (build 26200) only                            |
+| VSCodium version  | 1.121.03429 (pinned — do not update during PoC)              |
+| Electron version  | 39.8.8 (match VSCodium's bundled Electron)                   |
+| Node.js           | 22.22.1                                                      |
+| Ribbon            | Static HTML/CSS — no framework required                      |
+| Launch mode       | `npm run dev` only — no installer, no packaging              |
+| Repo location     | `C:\Users\johnx\Documents\WildPeaches\Projects\JuliaLab\JuliaLabShell` |
+| Change discipline | One file per Antigravity task; mandatory diff review before any run |
+
+## 7. Risks
+
+| Risk                                                       | Likelihood | Impact | Mitigation                                                   |
+| ---------------------------------------------------------- | ---------- | ------ | ------------------------------------------------------------ |
+| VSCodium cannot hide its own title bar when embedded       | Medium     | High   | Investigate `--title-bar-style` and `window.titleBarStyle` flags early (Task 001) |
+| VSCodium IPC boundary blocks ribbon→command wiring         | Low        | Low    | Out of scope for PoC; deferred to full rewrite               |
+| Electron 39 + VSCodium embedding has undocumented breakage | Medium     | High   | Pin versions; use Cursor/Windsurf public repos as reference  |
+| VSCodium menu bar reappears on focus/blur events           | Low        | Medium | Test focus cycling explicitly in SC-4 verification           |
+
+------
+

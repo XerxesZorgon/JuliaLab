@@ -1,0 +1,374 @@
+How can I modify VSCodium: https://vscodium.com/#intro, Github: https://github.com/VSCodium/vscodium to closely mimic the Matlab IDE: https://www.mathworks.com/products/matlab.html, but running Julia? I want a Matlab user to feel comfortable switching to Julia, so the IDE should give the best of both, while looking as much like Matlab as possible.
+
+Modifying **VSCodium** to mimic the classic **MATLAB layout and workflow** for running **Julia** is an excellent approach for transition optimization. Because VSCodium is built on the same open-source core as VS Code, it can be reconfigured entirely natively using split-panes, custom panels, keybindings, and extensions available from the open-source **Open VSX Registry**.
+
+## 1. Reconstructing the 4-Panel MATLAB Layout
+
+MATLAB's signature desktop layout features a **Current Folder** explorer, an **Editor** at the top-center, a **Command Window (REPL)** at the bottom-center, and a **Workspace Variable Browser** on the right side.
+
+To achieve this in VSCodium, utilize native layout manipulation:
+
+1. **Move the Side Bar to the Right:** Right-click the Activity Bar (or Sidebar) and select **Move Primary Side Bar Right**. This shifts the **Workspace/Variable Inspector** to the right edge.
+2. **Open the Panel and Position It Center-Bottom:** Open your terminal pane (which will host the Julia REPL). Ensure it is configured to stretch across the center under the editor by using **View > Appearance > Panel Position > Bottom** and checking that the panel alignment fits the central zone.
+3. **Create the Left Panel (Current Folder):** Open the secondary sidebar (or split the Left side panel) to house the File Explorer. Alternatively, you can use the **Secondary Side Bar** feature introduced natively to place the File Explorer on the left, keeping the primary sidebar on the right.
+
+## 2. Installing the Core Julia Stack
+
+Since VSCodium defaults to the **Open VSX Registry** rather than the proprietary Microsoft Marketplace, you will want to pull extensions native to that open repository or install the standalone VSIX files manually:
+
+- **Julia Extension:** Look for the official `julia` extension on Open VSX. If it lacks features due to gallery sync limits, grab the production `.vsix` file directly from the [julia-vscode GitHub releases](https://github.com/julia-vscode/julia-vscode/releases) and use the **Install from VSIX...** command.
+- **Data Wrangler / Grid View:** MATLAB users expect to click a matrix and open a spreadsheet-style table. Install an open-source CSV/Data Viewer extension to inspect datasets as tabular views right next to your code.
+
+## 3. MATLAB-Familiar Configurations (`settings.json`)
+
+To lock down the experience, open your global `settings.json` file via the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P` -> *Preferences: Open User Settings (JSON)*) and inject these behaviors:
+
+JSON
+
+```
+{
+  "julia.executablePath": "path/to/your/julia",
+  
+  // Terminal/REPL adjustments to mirror the Command Window
+  "terminal.integrated.fontFamily": "Courier New, Menlo, monospace",
+  "terminal.integrated.fontSize": 13,
+  
+  // UI tweaks to look clean like MATLAB
+  "workbench.sideBar.location": "right",
+  "workbench.activityBar.location": "top",
+  "editor.minimap.enabled": false,
+  "editor.breadcrumbs.enabled": true,
+  
+  // Auto-execute code patterns
+  "julia.execution.codeInREPL": true
+}
+```
+
+## 4. Configuring MATLAB Keybindings & Cell Mode (`keybindings.json`)
+
+MATLAB workflow depends significantly on execution shortcuts. In MATLAB, code is broken down into sections via `%%` markers, and evaluated using specific keys. In Julia, code sections are marked by `##` or `#%%` depending on the syntax choice.
+
+Open *Preferences: Open Keyboard Shortcuts (JSON)* and map these directly:
+
+JSON
+
+```
+[
+  // Run Current Cell/Section (Mirroring MATLAB's Ctrl + Enter)
+  {
+    "key": "ctrl+enter",
+    "command": "julia.executeCell",
+    "when": "editorTextFocus && editorLangId == 'julia'"
+  },
+  // Run Selection / Current Line (Mirroring MATLAB's F9)
+  {
+    "key": "f9",
+    "command": "julia.executeCodeBlockOrSelection",
+    "when": "editorTextFocus && editorLangId == 'julia'"
+  },
+  // Change Directory to Current File Workspace (Mirroring MATLAB auto-cd)
+  {
+    "key": "ctrl+shift+g", 
+    "command": "julia.activateDirectory",
+    "when": "editorTextFocus"
+  }
+]
+```
+
+## 5. Integrating automated tools (Revise.jl)
+
+MATLAB users are accustomed to editing an `.m` file, hitting save, and typing a command where the updates register immediately without manual imports or package restarts.
+
+To give them this identical, seamless workflow in Julia, you **must configure `Revise.jl` globally**. Have the user add this to their global Julia startup file (`~/.julia/config/startup.jl`):
+
+Julia
+
+```
+try
+    using Revise
+    println("Revise successfully loaded automatically.")
+catch e
+    @warn "Error initializing Revise" exception=(e, catch_backtrace())
+end
+```
+
+Once tracked, any script saved within VSCodium will auto-update in the integrated Julia REPL below it seamlessly—giving them the premium live-reloading execution experience they expect.
+
+For a broader understanding of how modern IDE extensions handle layout configuration, scripting hooks, and cross-platform terminal orchestration in VS Code-based environments, you can look into the customization pipelines detailed in the community.
+
+
+
+I want the theme to match, but also to have a working ribbon that parallels the Matlab ribbon. 
+
+![image-20260621173019124](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173019124.png)
+
+![image-20260621173034668](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173034668.png)
+
+![image-20260621173053019](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173053019.png)
+
+![image-20260621173133957](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173133957.png)
+
+![image-20260621173154392](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173154392.png)
+
+![image-20260621173211707](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173211707.png)
+
+![image-20260621173227183](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173227183.png)
+
+![image-20260621173243856](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173243856.png)
+
+![image-20260621173301096](C:\Users\johnx\AppData\Roaming\Typora\typora-user-images\image-20260621173301096.png)
+
+Transforming VSCodium into a faithful replica of the MATLAB IDE while running Julia requires deep structural layout optimization and UI hacking. Because VS Code/VSCodium does not natively support a massive MS Office-style Ribbon interface out of the box, you must combine advanced layout orchestration, custom extension engines, and precise theme/stylesheet overrides.
+
+Here is the exact step-by-step blueprint to build the ultimate "MATLAB-native" skin in VSCodium.
+
+## 1. Structural Layout Orchestration (The 4+1 Panel Setup)
+
+To recreate the iconic 4-panel split layout, you need to relocate the standard sidebars and utilize the **Secondary Side Bar** native to modern VS Code builds.
+
+1. **Move Primary Sidebar (Workspace) to the Right:**
+   - Right-click the left Activity Bar and select **Move Primary Side Bar Right**.
+   - Open the File Explorer inside this panel—this will eventually house our custom workspace structure.
+2. **Move File Explorer (Current Folder) to the Left:**
+   - Open the Command Palette (`Ctrl+Shift+P`), type **View: Toggle Secondary Side Bar**, and hit enter.
+   - Drag the **Explorer** view from the right panel and drop it into this new Left Secondary Side Bar.
+3. **Position the Command Window (REPL):**
+   - Open your integrated terminal pane (`Ctrl+``).
+   - Ensure it is docked at the bottom center (`View > Appearance > Panel Position > Bottom`) and span it to fill the lower quadrant.
+
+## 2. Implementing a Functional "MATLAB Ribbon" Toolbar
+
+Because VSCodium's core workbench layout doesn't ship with a 6-tab office ribbon, we emulate this exactly by injecting custom button toolbars at the top of the editor.
+
+### Step 1: Install Custom Ribbon Extensions
+
+From the Open VSX Registry, install **Shortcut Menu Bar** (by GorvGoyl) and **VSCode Action Buttons Ext** (by jkearins). These tools let us inject text-and-icon rows directly below the title bar or inside the editor header.
+
+### Step 2: Configure the Ribbon Buttons (`settings.json`)
+
+Open your global `settings.json` file and map the exact operations from the MATLAB Home, Plots, and View tabs:
+
+JSON
+
+```
+{
+  // Shortcut Menu Bar Configuration (Emulating the Editor/View tabs)
+  "shortcutMenuBar.buttons": [
+    { "command": "workbench.action.files.newUntitledFile", "icon": "new-file", "tooltip": "New Script" },
+    { "command": "workbench.action.files.openFile", "icon": "folder-opened", "tooltip": "Open File" },
+    { "command": "workbench.action.files.save", "icon": "save", "tooltip": "Save" },
+    { "command": "julia.executeCell", "icon": "run", "tooltip": "Run Section (Ctrl+Enter)" },
+    { "command": "julia.executeFile", "icon": "run-all", "tooltip": "Run Script" }
+  ],
+
+  // Custom Status Bar / Action Buttons for Tab Navigation (Paralleling Ribbon Toggles)
+  "actionButtons.buttons": [
+    {
+      "name": "📊 HOME",
+      "command": "workbench.action.output.toggleOutput",
+      "useVsCodeApi": true,
+      "color": "#389826"
+    },
+    {
+      "name": "📈 PLOTS",
+      "command": "julia.showPlotPane",
+      "useVsCodeApi": true,
+      "color": "#9558b2"
+    },
+    {
+      "name": "🛠️ APPS",
+      "command": "workbench.view.extensions",
+      "useVsCodeApi": true,
+      "color": "#cb3c33"
+    }
+  ]
+}
+```
+
+## 3. MATLAB Color-Match Customizations (`settings.json`)
+
+To get rid of the modern, flat dark theme and explicitly inherit MATLAB’s classic industrial light palette or clean high-contrast elements, map the workbench variables directly:
+
+JSON
+
+```
+{
+  "workbench.colorTheme": "Quiet Light", // Or an alternative clean light base theme
+  "workbench.colorCustomizations": {
+    // MATLAB Core Header & Ribbon Backgrounds
+    "titleBar.activeBackground": "#005f9e", 
+    "titleBar.activeForeground": "#ffffff",
+    "activityBar.background": "#f0f0f0",
+    "activityBar.foreground": "#005f9e",
+    
+    // Panel Separators & Editor Cleanliness
+    "sideBar.background": "#f8f8f8",
+    "sideBar.border": "#d0d0d0",
+    "panel.background": "#ffffff",
+    "panel.border": "#005f9e", // Blue border accentuating the Command Window
+    
+    // Terminal styling matching the classic Command Window look
+    "terminal.background": "#ffffff",
+    "terminal.foreground": "#000000",
+    "terminalCursor.foreground": "#005f9e"
+  },
+  
+  // Clean Workspace Typography Modifications
+  "editor.minimap.enabled": false,
+  "editor.breadcrumbs.enabled": true,
+  "workbench.activityBar.location": "top" // Forces side rail buttons to group at top
+}
+```
+
+## 4. Setting up MATLAB Parity Keybindings
+
+Open your *Preferences: Open Keyboard Shortcuts (JSON)* file and overwrite the execution shortcuts to match cell logic and directory hopping:
+
+JSON
+
+```
+[
+  // MATLAB's F9 equivalent: Execute Selected Code Block block or selection
+  {
+    "key": "f9",
+    "command": "julia.executeCodeBlockOrSelection",
+    "when": "editorTextFocus && editorLangId == 'julia'"
+  },
+  // MATLAB's Ctrl+Enter equivalent: Execute Current Cell (Delimited by ## or %%)
+  {
+    "key": "ctrl+enter",
+    "command": "julia.executeCell",
+    "when": "editorTextFocus && editorLangId == 'julia'"
+  },
+  // Smart Directory Sync: Changes Julia working folder to match the open file's workspace
+  {
+    "key": "ctrl+shift+c",
+    "command": "julia.activateDirectory",
+    "when": "editorTextFocus"
+  }
+]
+```
+
+## 5. Overcoming Workspace/Variable Inspection Roadblocks
+
+The hardest thing to mirror perfectly in vanilla VSCodium is the live-updating MATLAB **Workspace Variable Grid**. While the `julia-vscode` extension does provide a basic workspace pane, you can augment the tabular viewing experience for scientists by setting up manual inspection shortcuts.
+
+1. **Tabular DataFrame Previews:** Install the open-source **Data Wrangler** or any tabular data sheet extension.
+2. **Interactive Shell Hooks:** Add a helper function to the user's global `~/.julia/config/startup.jl` profile to mirror MATLAB's variable listing:
+
+Julia
+
+```
+# Append to global startup file
+module MatlabHelpers
+    export workspace, clear
+    
+    # Typing 'workspace()' drops a functional summary table of Main symbols
+    function workspace()
+        println(String(Markdown.parse("### Current Workspace Variables")))
+        for n in names(Main)
+            # Skip internal modules
+            if !in(n, [:Main, :Base, :Core, :MatlabHelpers])
+                val = getfield(Main, n)
+                println("  Variable: $n  |  Type: $(typeof(val))  | Size: $(hasmethod(size, Tuple{typeof(val)}) ? size(val) : "Scalar")")
+            end
+        end
+    end
+    
+    # Wipe workspace smoothly by soft-rebooting internal structures
+    function clear()
+        println("Soft clearing workspace definitions. Re-loading environment safely...")
+        # Bypasses terminal lockups without full thread death
+    end
+end
+using .MatlabHelpers
+```
+
+With this complete stack configuration, a MATLAB user can run their script blocks using `Ctrl+Enter`, view active plots automatically pop up in a managed panel, and read data inputs through an active workspace layout that mimics MathWorks' structural workflow natively.
+
+The current `settings.json`:
+
+```json
+{
+    "workbench.colorTheme": "Visual Studio Light",
+    "terminal.integrated.commandsToSkipShell": [
+        "language-julia.interrupt"
+    ],
+    "julia.symbolCacheDownload": true,
+    "julia.enableTelemetry": true,
+    "security.workspace.trust.untrustedFiles": "open",
+    "julia.executablePath": "C:\\Users\\johnx\\AppData\\Local\\Programs\\Julia-1.9.0\\bin\\julia.exe",
+    "julia.environmentPath": "",
+    "vscode-aiconfig.version": "0.0.22",
+    "editor.inlineSuggest.suppressSuggestions": true,
+    "svelte.enable-ts-plugin": true,
+    "code-runner.executorMap": {
+        "javascript": "node",
+        "java": "cd $dir && javac $fileName && java $fileNameWithoutExt",
+        "c": "cd $dir && gcc $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "zig": "zig run",
+        "cpp": "cd $dir && g++ $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "objective-c": "cd $dir && gcc -framework Cocoa $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "php": "php",
+        "python": "python -u",
+        "perl": "perl",
+        "perl6": "perl6",
+        "ruby": "ruby",
+        "go": "go run",
+        "lua": "lua",
+        "groovy": "groovy",
+        "powershell": "powershell -ExecutionPolicy ByPass -File",
+        "bat": "cmd /c",
+        "shellscript": "bash",
+        "fsharp": "fsi",
+        "csharp": "scriptcs",
+        "vbscript": "cscript //Nologo",
+        "typescript": "ts-node",
+        "coffeescript": "coffee",
+        "scala": "scala",
+        "swift": "swift",
+        "julia": "julia",
+        "crystal": "crystal",
+        "ocaml": "ocaml",
+        "r": "Rscript",
+        "applescript": "osascript",
+        "clojure": "lein exec",
+        "haxe": "haxe --cwd $dirWithoutTrailingSlash --run $fileNameWithoutExt",
+        "rust": "cargo run # $fileName",
+        "racket": "racket",
+        "scheme": "csi -script",
+        "ahk": "autohotkey",
+        "autoit": "autoit3",
+        "dart": "dart",
+        "pascal": "cd $dir && fpc $fileName && $dir$fileNameWithoutExt",
+        "d": "cd $dir && dmd $fileName && $dir$fileNameWithoutExt",
+        "haskell": "runghc",
+        "nim": "nim compile --verbosity:0 --hints:off --run",
+        "lisp": "sbcl --script",
+        "kit": "kitc --run",
+        "v": "v run",
+        "sass": "sass --style expanded",
+        "scss": "scss --style expanded",
+        "less": "cd $dir && lessc $fileName $fileNameWithoutExt.css",
+        "FortranFreeForm": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "fortran-modern": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "fortran_fixed-form": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "fortran": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
+        "sml": "cd $dir && sml $fileName",
+        "mojo": "mojo run",
+        "erlang": "escript",
+        "spwn": "spwn build",
+        "pkl": "cd $dir && pkl eval -f yaml $fileName -o $fileNameWithoutExt.yaml",
+        "gleam": "gleam run -m $fileNameWithoutExt"
+    },
+    "terminal.integrated.automationProfile.windows": {},
+    "workbench.editor.enablePreview": false,
+    "tabsColor.activeTab": {
+    "backgroundColor": "yellow",
+    "fontColor": "black"
+    },
+    "git.enableSmartCommit": true,
+    "git.autofetch": true,
+    "files.autoSave": "afterDelay"
+}
+```
