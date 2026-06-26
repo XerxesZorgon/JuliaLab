@@ -205,6 +205,7 @@ function createWindow() {
       nodeIntegration:  false,
     },
   });
+  state.ribbonView.setBackgroundColor('#1e1e1e');
   state.win.contentView.addChildView(state.ribbonView);
   state.ribbonView.setBounds({
     x: 0, y: 0,
@@ -213,6 +214,7 @@ function createWindow() {
   });
   state.ribbonView.webContents.loadFile(path.join(__dirname, 'index.html'));
   state.workbenchView = new WebContentsView();
+  state.workbenchView.setBackgroundColor('#1e1e1e');
   state.win.contentView.addChildView(state.workbenchView);
   setViewBounds();
   state.workbenchView.webContents.loadURL(
