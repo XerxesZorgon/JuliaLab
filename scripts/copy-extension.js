@@ -7,6 +7,8 @@ const path = require('path');
 const SRC  = path.join(__dirname, '..', 'extensions', 'julialab');
 const DEST = path.join(__dirname, '..', 'server-data', 'extensions', 'julialab');
 
+const SKIP_FILES = new Set(['tsconfig.json', 'package-lock.json']);
+
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
@@ -16,6 +18,7 @@ function copyDir(src, dest) {
       if (entry.name === 'node_modules' || entry.name === 'src') continue;
       copyDir(s, d);
     } else {
+      if (SKIP_FILES.has(entry.name)) continue;
       fs.copyFileSync(s, d);
     }
   }
