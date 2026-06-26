@@ -24,6 +24,7 @@ const state = {
   serverPort:    null,
   shuttingDown:  false,
   ribbonWs:      null,
+  childPids:     new Set(),   // extra spawned trees to reap on quit (e.g. Pluto)
 };
 
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
@@ -95,17 +96,62 @@ function setViewBounds() {
   }
 }
 
+function killTree(pid) {
+  return new Promise(resolve => {
+    if (!pid) { resolve(); return; }
+    const tk = spawn('taskkill', ['/F', '/T', '/PID', String(pid)],
+                     { stdio: 'ignore', shell: false });
+    tk.on('exit',  () => resolve());   // non-zero (already dead) is fine
+    tk.on('error', () => resolve());   // taskkill missing — give up quietly
+  });
+}
+
+// Kill every process whose command line references OUR server-data dir.
+// Catches the detached codium-tunnel / codium-server trees that are not
+// descendants of the spawned cmd.exe PID. Safe: single-instance, and the
+// absolute server-data path is unique to this checkout.
+function killServerDataTree() {
+  return new Promise(resolve => {
+    const psCmd =
+      "Get-CimInstance Win32_Process | " +
+      "Where-Object { $_.CommandLine -match 'serve-web' -and " +
+      "$_.CommandLine -match 'server-data' } | " +
+      "ForEach-Object { taskkill /F /T /PID $_.ProcessId 2>$null }";
+    const ps = spawn('powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', psCmd],
+      { stdio: 'ignore', shell: false });
+    ps.on('exit',  () => resolve());
+    ps.on('error', () => resolve());
+  });
+}
+
 async function killServer() {
   if (!state.serverProcess) return;
   state.shuttingDown = true;
+  console.log('[killServer] starting teardown');
+
+  const serverPid = state.serverProcess.pid;
+
+  // Graceful first: ask codium to exit and flush its state.
   state.serverProcess.kill('SIGTERM');
   await new Promise(resolve => {
-    const t = setTimeout(() => {
-      state.serverProcess?.kill('SIGKILL');
-      resolve();
-    }, 2000);
+    const t = setTimeout(resolve, 1500);
     state.serverProcess.on('exit', () => { clearTimeout(t); resolve(); });
   });
+
+  // Sweep the whole tree (parent is cmd.exe; /T reaps node children).
+  await killTree(serverPid);
+
+  // Catch-all: reap the detached tunnel/server trees by server-data path.
+  await killServerDataTree();
+
+  // Reap any other tracked trees (e.g. Pluto — registered by later tasks).
+  for (const pid of state.childPids) {
+    await killTree(pid);
+  }
+  state.childPids.clear();
+
+  console.log('[killServer] teardown complete');
   state.ribbonWs?.close();
   state.ribbonWs = null;
   state.serverProcess = null;
