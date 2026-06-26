@@ -34,6 +34,12 @@ const READY_RE       = /Web UI available at/;
 const TIMEOUT_MS     = 30000;
 
 
+async function preflightPort() {
+  console.log('[preflight] checking port ' + SERVER_PORT);
+  await killServerDataTree();   // reap any stale serve-web on our server-data
+  await new Promise(r => setTimeout(r, 300));  // let the OS release the socket
+  console.log('[preflight] port clear');
+}
 
 function spawnServer() {
   fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
@@ -234,6 +240,7 @@ app.whenReady().then(async () => {
     }
   }
 
+  await preflightPort();
   const proc = spawnServer();
   try {
     await waitForReady(proc);
