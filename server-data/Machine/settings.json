@@ -9,6 +9,5 @@
   "workbench.panel.defaultLocation": "bottom",
   "workbench.sideBar.location": "left",
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.fontSize": 13,
-  "security.workspace.trust.enabled": false
+  "terminal.integrated.fontSize": 13
 }
