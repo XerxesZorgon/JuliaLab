@@ -1,9 +1,26 @@
+---
+{
+  "id": "file_t1qpb9mh",
+  "filetype": "document",
+  "filename": "DESIGN-sprint3",
+  "created_at": "2026-06-26T18:55:27.597Z",
+  "updated_at": "2026-06-26T18:55:32.547Z",
+  "meta": {
+    "location": "/",
+    "tags": [],
+    "categories": [],
+    "description": "",
+    "source": "markdown"
+  }
+}
+---
 # Design Document — Sprint 3
-**Project:** JuliaLabApp — `julialab` VSCodium extension  
-**Version:** 0.1  
-**Date:** 2026-06-24  
-**Author:** John Peach / eurAIka  
-**Repo:** `C:\Users\johnx\Documents\WildPeaches\Projects\JuliaLab\JuliaLabApp`  
+
+**Project:** JuliaLabApp — `julialab` VSCodium extension\
+**Version:** 0.1\
+**Date:** 2026-06-24\
+**Author:** John Peach / eurAIka\
+**Repo:** `C:\Users\johnx\Documents\WildPeaches\Projects\JuliaLab\JuliaLabApp`\
 **Depends on:** SDD-sprint3.md, ADR-008 through ADR-011
 
 ---
@@ -51,8 +68,7 @@ JuliaLabApp/
 
 ### Spike A — `codium serve-web` folder flag (gates Task 002)
 
-**Question:** What CLI argument causes `codium serve-web` to open a specific
-folder in the workbench? Candidates in order of likelihood:
+**Question:** What CLI argument causes `codium serve-web` to open a specific folder in the workbench? Candidates in order of likelihood:
 
 1. `--default-folder <absolute-windows-path>` — documented for `code` CLI
 2. Bare positional path argument after all flags
@@ -73,30 +89,20 @@ folder in the workbench? Candidates in order of likelihood:
 # FAIL: try next candidate
 ```
 
-**Pass result:** Record the working flag syntax. Task 002 uses it.  
-**Fail result (all candidates fail):** Use ADR-008 Option B fallback —
-extension opens folder via API. Document which option was used. Task 002
-is replaced by extension-side folder-open logic in Task 012.
+**Pass result:** Record the working flag syntax. Task 002 uses it.\
+**Fail result (all candidates fail):** Use ADR-008 Option B fallback — extension opens folder via API. Document which option was used. Task 002 is replaced by extension-side folder-open logic in Task 012.
 
-**Additional check during Spike A — julia-vscode activation:**  
-After folder opens, verify julia-vscode activates: check Activity Bar for
-the Julia beaker icon. If it does not appear, note it — Task 012 must call
-`vscode.extensions.getExtension('julialang.language-julia').activate()`
-explicitly.
+**Additional check during Spike A — julia-vscode activation:**\
+After folder opens, verify julia-vscode activates: check Activity Bar for the Julia beaker icon. If it does not appear, note it — Task 012 must call `vscode.extensions.getExtension('julialang.language-julia').activate()`explicitly.
 
-**Additional check during Spike A — window event bridge (determines ADR-010 path):**  
-With JuliaLab running (after Task 002), open Electron DevTools on
-`workbenchView` (`main.js` temporary line: `state.workbenchView.webContents.openDevTools()`).
-In the DevTools console, run:
+**Additional check during Spike A — window event bridge (determines ADR-010 path):**\
+With JuliaLab running (after Task 002), open Electron DevTools on `workbenchView` (`main.js` temporary line: `state.workbenchView.webContents.openDevTools()`). In the DevTools console, run:
 
 ```js
 window.dispatchEvent(new CustomEvent('julialab-command', { detail: { command: 'julialab.focusEditor' } }))
 ```
 
-Then check whether the extension host received it. Because the extension host
-runs as a Web Worker in serve-web mode, its `window` is the worker global —
-separate from the main frame's `window`. `dispatchEvent` on the main frame
-will NOT reach the worker's `addEventListener`. This test confirms the risk.
+Then check whether the extension host received it. Because the extension host runs as a Web Worker in serve-web mode, its `window` is the worker global — separate from the main frame's `window`. `dispatchEvent` on the main frame will NOT reach the worker's `addEventListener`. This test confirms the risk.
 
 **Spike A bridge decision table:**
 
@@ -105,7 +111,7 @@ will NOT reach the worker's `addEventListener`. This test confirms the risk.
 | `window` event reaches extension host | Option A — `window` event | As designed in §3.5 / §3.8 primary |
 | `window` event does NOT reach extension host | Option B — WebSocket | Use §3.2 WebSocket variant below |
 
-**Additional check during Spike A — `julia-explorer` view container ID:**  
+**Additional check during Spike A —** `julia-explorer` **view container ID:**\
 In the VSCodium DevTools console, run:
 
 ```js
@@ -113,15 +119,13 @@ In the VSCodium DevTools console, run:
 Object.keys(vscode.commands._commands).filter(k => k.startsWith('workbench.view'))
 ```
 
-Confirm `workbench.view.extension.julia-explorer` appears. If the ID differs,
-record the correct one for Task 012.
+Confirm `workbench.view.extension.julia-explorer` appears. If the ID differs, record the correct one for Task 012.
 
 ---
 
 ### Spike B — julia-vscode plot pane in serve-web context (gates Task 008)
 
-**Question:** Does julia-vscode's plot pane (`language-julia.show-plotpane`)
-render CairoMakie output in the serve-web browser context?
+**Question:** Does julia-vscode's plot pane (`language-julia.show-plotpane`) render CairoMakie output in the serve-web browser context?
 
 **Spike procedure (manual, with JuliaLab running after Task 002):**
 
@@ -131,12 +135,9 @@ using CairoMakie
 lines(1:10, rand(10))
 ```
 
-**Pass:** A PNG figure appears in a WebviewPanel inside the VSCodium workbench.  
-**Partial pass:** Figure appears but in a separate browser popup/tab — document
-and decide whether acceptable.  
-**Fail:** No figure appears, or error in DevTools console — escalate to planning
-chat before proceeding. ADR-011 fallback (Compute42 display.jl port) would be
-revisited.
+**Pass:** A PNG figure appears in a WebviewPanel inside the VSCodium workbench.\
+**Partial pass:** Figure appears but in a separate browser popup/tab — document and decide whether acceptable.\
+**Fail:** No figure appears, or error in DevTools console — escalate to planning chat before proceeding. ADR-011 fallback (Compute42 display.jl port) would be revisited.
 
 ---
 
@@ -181,9 +182,8 @@ revisited.
 | `terminal.integrated.defaultProfile.windows` | Ensures PowerShell, not cmd |
 | `terminal.integrated.fontSize` | Readable default |
 
-**Not set here (set by extension on first open):**  
-`workbench.view.extension.julia-explorer` visibility is controlled by
-the `julialab` extension's layout command sequence, not a static setting.
+**Not set here (set by extension on first open):**\
+`workbench.view.extension.julia-explorer` visibility is controlled by the `julialab` extension's layout command sequence, not a static setting.
 
 ---
 
@@ -191,7 +191,7 @@ the `julialab` extension's layout command sequence, not a static setting.
 
 #### Task 002 amendment — default workspace folder
 
-**Add near top, after existing `const` declarations:**
+**Add near top, after existing** `const` **declarations:**
 
 ```js
 const os   = require('os');
@@ -200,16 +200,14 @@ const fs   = require('fs');
 const DEFAULT_WORKSPACE = path.join(os.homedir(), 'JuliaLab');
 ```
 
-**Add to `spawnServer()`, after the existing spawn arguments
-(exact flag determined by Spike A; placeholder shown):**
+**Add to** `spawnServer()`**, after the existing spawn arguments (exact flag determined by Spike A; placeholder shown):**
 
 ```js
 // Ensure default workspace folder exists
 fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
 ```
 
-**Amend the `spawn` call args array** (one additional argument, appended
-after `'--without-connection-token'`):
+**Amend the** `spawn` **call args array** (one additional argument, appended after `'--without-connection-token'`):
 
 ```js
 '--default-folder', DEFAULT_WORKSPACE,
@@ -251,8 +249,7 @@ const { WebSocket, WebSocketServer } = require('ws');  // npm install ws --save
 const RIBBON_WS_PORT = 2999;
 ```
 
-Add to `app.whenReady()` block, after `waitForReady(proc)` resolves and
-before `createWindow()`:
+Add to `app.whenReady()` block, after `waitForReady(proc)` resolves and before `createWindow()`:
 
 ```js
 // Connect ribbon WebSocket client to extension host server
@@ -291,21 +288,21 @@ state.ribbonWs?.close();
 state.ribbonWs = null;
 ```
 
-**Note:** Option B requires `ws` as a runtime dependency. Add to root
-`package.json` `dependencies` (not `devDependencies`):
+**Note:** Option B requires `ws` as a runtime dependency. Add to root `package.json` `dependencies` (not `devDependencies`):
+
 ```json
 "dependencies": { "ws": "^8.18.0" }
 ```
 
 ---
 
-**No other changes to `main.js`.**
+**No other changes to** `main.js`**.**
 
 ---
 
 ### 3.3 `preload.js` — Task 006
 
-**Add one entry to the `contextBridge.exposeInMainWorld` call:**
+**Add one entry to the** `contextBridge.exposeInMainWorld` **call:**
 
 ```js
 // Existing:
@@ -322,8 +319,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 ### 3.4 `index.html` — Task 007 (ribbon tab `data-command` attributes)
 
-**Change:** Add `data-command` attributes to wired ribbon tabs.
-Unwired tabs (APPS, LIVE EDITOR, INSERT, VIEW) get `data-command="noop"`.
+**Change:** Add `data-command` attributes to wired ribbon tabs. Unwired tabs (APPS, LIVE EDITOR, INSERT, VIEW) get `data-command="noop"`.
 
 ```html
 <!-- existing span elements, amended: -->
@@ -335,7 +331,7 @@ Unwired tabs (APPS, LIVE EDITOR, INSERT, VIEW) get `data-command="noop"`.
 <span class="ribbon-tab"        data-command="noop">VIEW</span>
 ```
 
-**No other changes to `index.html`.**
+**No other changes to** `index.html`**.**
 
 ---
 
@@ -413,9 +409,8 @@ document.querySelectorAll('.ribbon-tab').forEach(tab => {
 ```
 
 **Notes:**
-- `activationEvents: ["onStartupFinished"]` fires after all other extensions
-  have activated. This ensures julia-vscode is ready before `julialab` calls
-  `language-julia.startREPL`.
+
+- `activationEvents: ["onStartupFinished"]` fires after all other extensions have activated. This ensures julia-vscode is ready before `julialab` calls `language-julia.startREPL`.
 - `main: "./dist/extension.js"` — TypeScript compiles to `dist/`.
 - Commands registered here are the targets for ribbon IPC strings (ADR-010).
 
@@ -670,7 +665,7 @@ copyDir(SRC, DEST);
 console.log('[copy-extension] done.');
 ```
 
-**What is copied:** `dist/`, `package.json`, `tsconfig.json`.  
+**What is copied:** `dist/`, `package.json`, `tsconfig.json`.\
 **What is excluded:** `src/`, `node_modules/` — not needed at runtime.
 
 ---
@@ -699,17 +694,14 @@ console.log('[copy-extension] done.');
 }
 ```
 
-**`start` vs `start:fast`:**
+`start` **vs** `start:fast`**:**
 
 | Script | When to use |
-|---|---|
+| :--- | :--- |
 | `npm start` | First run of the day, or after any change to `extensions/julialab/src/` |
-| `npm run start:fast` | Iteration on `main.js`, `renderer.js`, or other non-extension files — skips the ~5–10s TypeScript compile |
+| `npm run start:fast` | Iteration on `main.js`, `renderer.js`, or other non-extension files — skips the \~5–10s TypeScript compile |
 
-**`ws` dependency:** Added to `dependencies` (not `devDependencies`) because
-it is required at runtime if Spike A selects Option B (WebSocket bridge).
-If Spike A selects Option A (window events), `ws` is unused but harmless.
-Remove it in a cleanup task after Spike A if Option A is confirmed.
+`ws` **dependency:** Added to `dependencies` (not `devDependencies`) because it is required at runtime if Spike A selects Option B (WebSocket bridge). If Spike A selects Option A (window events), `ws` is unused but harmless. Remove it in a cleanup task after Spike A if Option A is confirmed.
 
 ---
 
@@ -755,9 +747,9 @@ Spike B  ──►  SC-3 plot pane validation
 ```
 
 **Hard gates:**
+
 - Task 002 may not begin until Spike A has a confirmed flag syntax.
-- Task 007 / Task 005 / Task 006 (ribbon wiring) may not begin until
-  Task 012 is committed and the extension loads in the workbench.
+- Task 007 / Task 005 / Task 006 (ribbon wiring) may not begin until Task 012 is committed and the extension loads in the workbench.
 - SC-3 may not be declared pass/fail until Spike B has been run.
 
 ---

@@ -28,25 +28,16 @@ const state = {
 };
 
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
+const SERVER_PORT    = 41000;
 const SERVER_DATA_DIR = path.join(__dirname, 'server-data');
 const READY_RE       = /Web UI available at/;
 const TIMEOUT_MS     = 30000;
 
-function findFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
 
-async function spawnServer() {
+
+function spawnServer() {
   fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
-  state.serverPort = await findFreePort();
-  console.log('[server] using dynamic port ' + state.serverPort);
+  state.serverPort = SERVER_PORT;
   state.serverProcess = spawn('cmd.exe', [
     '/c', CODIUM_BIN + '.cmd',
     'serve-web',
@@ -243,7 +234,7 @@ app.whenReady().then(async () => {
     }
   }
 
-  const proc = await spawnServer();
+  const proc = spawnServer();
   try {
     await waitForReady(proc);
   } catch (err) {

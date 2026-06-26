@@ -23,9 +23,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await applyLayoutIfFirstOpen(context);
 
   // KI-3: bounded delay to clear julia-vscode async init before REPL start.
-  // 1500 ms is machine-speed-dependent; a readiness probe via juliaExt.exports
+  // 2000 ms is machine-speed-dependent; a readiness probe via juliaExt.exports
   // is the correct long-term fix (Sprint 5 / Spike J).
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve, 2000));
   await startJuliaRepl();
 }
 
