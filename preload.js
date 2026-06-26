@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   maximize:      () => ipcRenderer.send('window:maximize'),
   close:         () => ipcRenderer.send('window:close'),
   ribbonCommand: (command) => ipcRenderer.send('ribbon-command', command),
+  launchPluto:   () => ipcRenderer.send('pluto:launch'),
 });
