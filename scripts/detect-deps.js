@@ -169,6 +169,33 @@ async function detectDeps(settingsPath) {
   const settings = merged;
   console.log('[detect-deps] Settings written to', settingsPath);
 
+  // ── Seed application-scoped settings into the User layer ──────────────────
+  // security.workspace.trust.enabled is read from User settings by serve-web,
+  // not from Machine settings. Merge (do not overwrite) and create if absent.
+  try {
+    const userSettingsPath = path.join(
+      __dirname, '..', 'server-data', 'data', 'User', 'settings.json'
+    );
+    fs.mkdirSync(path.dirname(userSettingsPath), { recursive: true });
+
+    let userExisting = {};
+    try {
+      userExisting = JSON.parse(fs.readFileSync(userSettingsPath, 'utf8'));
+    } catch (_) {
+      // File missing or invalid — start from empty, preserving nothing is fine
+      // only when it genuinely doesn't exist.
+    }
+
+    const userMerged = Object.assign({}, userExisting, {
+      'security.workspace.trust.enabled': false,
+    });
+
+    fs.writeFileSync(userSettingsPath, JSON.stringify(userMerged, null, 2));
+    console.log('[detect-deps] User settings seeded:', userSettingsPath);
+  } catch (err) {
+    console.log('[detect-deps] WARN: could not seed User settings —', err.message);
+  }
+
   // Build warnings for missing tools
   const warnings    = [];
   const installUrls = [];
