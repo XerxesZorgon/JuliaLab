@@ -94,11 +94,6 @@ function waitForReady(proc) {
   });
 }
 
-function debounce(fn, ms) {
-  let timer;
-  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
-}
-
 function setViewBounds() {
   if (!state.win || !state.ribbonView) return;
   const [w, h] = state.win.getContentSize();
@@ -272,7 +267,7 @@ function createWindow() {
   state.workbenchView.webContents.loadURL(
     `http://127.0.0.1:${state.serverPort}`
   );
-  state.win.on('resize', debounce(setViewBounds, 16));
+  state.win.on('resize', setViewBounds);
   state.win.show();
 }
 
