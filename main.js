@@ -13,6 +13,20 @@ const fs = require('fs');
 const net = require('net');
 const { WebSocket } = require('ws');
 
+function getJuliaExe() {
+  try {
+    const s = JSON.parse(
+      fs.readFileSync(
+        path.join(__dirname, 'server-data', 'Machine', 'settings.json'),
+        'utf8'
+      )
+    );
+    return s['julia.executablePath'] || 'julia';
+  } catch (_) {
+    return 'julia';
+  }
+}
+
 const DEFAULT_WORKSPACE = path.join(os.homedir(), 'JuliaLab');
 const RIBBON_WS_PORT    = 2999;
 
@@ -26,6 +40,8 @@ const state = {
   ribbonWs:      null,
   childPids:     new Set(),   // extra spawned trees to reap on quit (e.g. Pluto)
 };
+
+let plutoProcess = null;
 
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
 const SERVER_PORT    = 41000;
@@ -186,6 +202,45 @@ function createWindow() {
     } else {
       console.warn('[ribbon-command] WebSocket not ready, command dropped:', command);
     }
+  });
+
+  ipcMain.on('pluto:launch', () => {
+    if (plutoProcess && !plutoProcess.killed) {
+      console.log('[pluto] already running');
+      return;
+    }
+    const juliaExe = getJuliaExe();
+    console.log('[pluto] spawning:', juliaExe);
+    plutoProcess = spawn(juliaExe,
+      ['-e', 'using Pluto; Pluto.run()'],
+      { stdio: ['ignore', 'pipe', 'pipe'], detached: false }
+    );
+    state.childPids.add(plutoProcess.pid);
+
+    let ready = false;
+    plutoProcess.stdout.on('data', chunk => {
+      const text = chunk.toString();
+      process.stdout.write('[pluto] ' + text);
+      if (!ready && text.includes('localhost')) {
+        ready = true;
+        console.log('[pluto] server ready');
+      }
+    });
+    plutoProcess.stderr.on('data', chunk => {
+      process.stderr.write('[pluto:err] ' + chunk.toString());
+    });
+    plutoProcess.on('exit', code => {
+      console.log('[pluto] exited with code', code);
+      if (plutoProcess) state.childPids.delete(plutoProcess.pid);
+      plutoProcess = null;
+      if (!ready && code !== 0) {
+        dialog.showErrorBox(
+          'Pluto.jl — Launch Failed',
+          'Pluto failed to start. Make sure Pluto.jl is installed:\n\n' +
+          '  julia> ] add Pluto'
+        );
+      }
+    });
   });
 
   app.on('before-quit', async (e) => {
