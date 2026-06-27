@@ -1,50 +1,51 @@
 # ADR-012: Process Teardown Strategy
-**Date:** 2026-06-25
-**Status:** Accepted
+**Date:** 2026-06-25 (amended 2026-06-26)
+**Status:** Accepted — implemented and verified
 
 ## Context
-`killServer()` escalates SIGTERM → 2 s → SIGKILL, but on Windows Node's `kill()`
-(even SIGKILL) targets only the parent PID, so the codium serve-web node children
-(extension host, file watcher, ptyHost) and any spawned Julia orphan on quit and
-accumulate across the relaunch-heavy dev loop. A full process-tree reap is
-required. Naive `taskkill /F` force-kills ungracefully, risking a dirty VSCodium
-workspace store (SQLite).
+`killServer()` sent SIGTERM/SIGKILL to the spawned `cmd.exe` parent only. On
+Windows, Node's `kill()` does not propagate to child processes, so the serve-web
+node children (extension host, file-watcher, ptyHost, and their descendants
+including the Julia REPL) orphaned on every quit.
 
-Grounding note: the server is spawned as `cmd.exe /c codium.cmd …`, so
-`state.serverProcess.pid` is the **cmd.exe** PID; `taskkill /F /T /PID <that>`
-reaps the whole tree from the top in one call.
+Investigation revealed that `codium serve-web` daemonizes under `codium-tunnel.exe`
+in a detached subtree that is NOT a descendant of the spawned `cmd.exe` PID.
+`taskkill /T` on the cmd.exe PID cannot reach the real server tree. The `cmd.exe`
+wrapper may itself self-exit immediately after launching codium, leaving the tree
+reparented to Windows system PIDs.
 
 ## Decision
-Graceful-first tree kill: signal the parent to terminate, wait a bounded grace
-window (~2 s, reuse the existing timeout), then `taskkill /F /T /PID
-<cmd.exe-pid>` to sweep survivors. Maintain a tracked-PID list (server + any
-Pluto child from ADR-013) so all spawned trees are reaped, not just one.
+Two-layer teardown:
+1. **SIGTERM the cmd.exe parent** (graceful first; lets codium flush SQLite state).
+2. **`taskkill /F /T /PID <cmd-pid>`** — sweeps any cmd.exe descendants.
+3. **Server-data path sweep** — kills every process whose command line matches
+   both `serve-web` AND `server-data` (the app's unique absolute path), using
+   PowerShell `Get-CimInstance` + `taskkill /F /T /PID`. This is the catch-all
+   that actually reaps the detached codium-tunnel tree.
+4. **`state.childPids` loop** — kills any additionally tracked trees (e.g. Pluto).
 
-## Rationale
-- Signal-first lets codium flush state and close SQLite cleanly.
-- `/T` reaps the node children Windows will not signal.
-- `/F` is the final sweep on whatever remains, not the first action.
-- PID-list structure avoids a second teardown path for Pluto.
+The sweep predicate uses `-match 'serve-web' -and -match 'server-data'` (regex,
+not `-like`). A `-like` predicate with a doubled-backslash escaped absolute path
+silently matches nothing on Windows — this was the original bug in T1-fix and
+T1-fix-2 before T1-fix-3 corrected it.
 
-## Alternatives Considered
-| Option | Rejected Because |
-|---|---|
-| `taskkill /F /T` immediately, no grace | Ungraceful; SQLite-dirty risk |
-| SIGTERM/SIGKILL parent only (status quo) | Leaks children — this is the bug |
-| Enumerate and kill each child individually | Fragile; races with new children |
-| POSIX process-group kill | Not available on Windows |
+## Verification
+Process-diff audit (snapshot before launch, snapshot after ✕-quit): zero
+`node.exe`/`codium.exe`/`julia.exe`/`cmd.exe`/`OpenConsole.exe`/`pwsh.exe` from
+the JuliaLab-spawned tree survived a clean quit. Verified 2026-06-26.
 
 ## Consequences
-- Quit is marginally slower by the grace window.
-- `taskkill` on an already-dead PID errors — caught/ignored.
-- The Pluto child (ADR-013) registers with the same reaper.
+- Quit takes ~2 s (SIGTERM grace window) — acceptable, better than orphans.
+- Pre-flight (`preflightPort()`) reuses `killServerDataTree()` to reap any stale
+  serve-web before binding port 41000 on launch.
+- Pluto child (ADR-013) registers in `state.childPids`; reaped by the loop.
+- `taskkill` on an already-dead PID errors — caught/ignored (resolve on both
+  `exit` and `error` events in `killTree`).
+- A `-match 'serve-web' -and -match 'server-data'` predicate is safe for
+  single-instance use; `server-data` path is unique to this checkout.
 
-## Footnote — possible secondary benefit (trust persistence, H2)
-Session forensics suggest VSCodium serve-web may flush global state
-(`globalStorage/state.vscdb`, where the workspace-trust list lives) only on a
-clean shutdown. Because this session's launches were repeatedly force-killed,
-that state may never have been flushed — which would explain the every-launch
-trust prompt (KI-6). If hypothesis H2 holds, this clean-teardown change may fix
-trust persistence as a side effect. This is unconfirmed (see SDD §8) and does not
-change the decision, but it is a second motivation for clean teardown beyond
-orphan-reaping.
+## Dead ends documented
+- SIGTERM/SIGKILL parent-only: leaks children (Windows does not propagate).
+- `taskkill /T` on cmd.exe PID: misses detached codium-tunnel tree.
+- `-like '*C:\\\\Users\\\\...\\\\server-data*'` predicate: doubled backslashes
+  never match real command lines; silently kills nothing.

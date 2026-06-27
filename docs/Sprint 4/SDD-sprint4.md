@@ -1,153 +1,173 @@
 # Software Description Document — Sprint 4
 **Project:** JuliaLabApp — robustness pass + Pluto Live Editor
-**Version:** 0.2  (supersedes 0.1)
-**Date:** 2026-06-25
+**Version:** 0.3 (final — all SCs verified)
+**Date:** 2026-06-26
 **Author:** John Peach / eurAIka
 **Repo:** `C:\Users\johnx\Documents\WildPeaches\Projects\JuliaLab\JuliaLabApp`
 **Prior sprint:** `sprint3-complete` (28c141b)
+**Tag:** `sprint4-complete`
 
-## Changelog 0.1 → 0.2
-- **T-port (dynamic server port) added and DELIVERED** mid-planning — ADR-015.
-  Hardcoded port 3456 caused repeated `os error 10048` launch failures from
-  orphaned and winnat-ghosted sockets. Now resolved.
-- **T1b (startup port pre-flight) removed** — superseded by ADR-015. A free-port
-  finder makes reclaim-by-PID unnecessary.
-- **SC-1 revised** to include `julia.exe` and scope to the spawned process tree.
-- **SC-2 reclassified as already-satisfied** — Spike E showed the workspace panel
-  persists across launches via VSCodium's own behaviour. T5 demoted to a
-  verification checkpoint.
-- **KI-6 (workspace-trust dialog every launch) added** — new task T-trust.
-- **Spike B resolved PASS-qualified**; SC-4c deferred to T7 implementation.
-- **Spike J skipped**; T4 ships as a documented bounded delay.
-- **Serve-web state-persistence anomaly** flagged for Sprint 5 (H1/H2, §8).
+## Changelog 0.2 → 0.3
+- All six success criteria verified and closed.
+- ADR-015 (dynamic port) amended: dynamic port reverted to fixed port 41000
+  after discovering that per-session browser-origin partitioning (IndexedDB
+  keyed by port) caused trust decisions, sidebar state, and telemetry dismissals
+  to reset every launch. T1's teardown makes a fixed port safe for clean quits;
+  T-port-fix-B adds a pre-flight sweep for the crash/force-kill case.
+- KI-6 (workspace trust dialog) closed via fixed-port browser-origin persistence,
+  not settings.json. All settings-based approaches confirmed structurally blocked
+  (VSCode issue #210965, as-designed; codium-tunnel has no --disable-workspace-trust
+  flag; settings files ignored for trust in web context). Root cause: dynamic port.
+- T-trust and T-trust-B reverted (both inert; Settings-based approaches do not work).
+- SC-3 verified at 2000 ms delay (3 clean cold launches, no crash reporter).
+- SC-4 fully verified: (a) Pluto opens in browser, (b) REPL usable alongside,
+  (c) Pluto tree reaped on quit via childPids + killTree.
+- Sprint 5 carry-list added (§8).
 
 ---
 
 ## 1. Purpose
 
-Sprint 3 delivered a self-configuring, MATLAB-familiar JuliaLab workbench.
-Sprint 4 hardens launch and teardown, removes startup friction, and promotes the
-Pluto Live Editor from spike to shipped feature.
-
-The robustness gaps: (1) quitting leaks orphaned `node.exe`/`julia.exe` children
-of the codium server; (2) a hardcoded server port produced relaunch-blocking
-`10048` failures; (3) julia-vscode's crash reporter fires on cold launch from an
-unguarded REPL-start race; (4) the workspace-trust dialog interrupts every launch
-and drops the window into Restricted Mode.
-
-The promotion: a LIVE EDITOR ribbon button launching a Pluto.jl reactive notebook
-in the system browser, as a dedicated child process — validated by Spike B.
+Sprint 4 hardened JuliaLab's launch and teardown, eliminated startup friction,
+and promoted the Pluto Live Editor from spike to shipped feature.
 
 ---
 
-## 2. Users and Use Cases
+## 2. What Shipped
 
-| User | Use Case | Priority |
+| Feature | Task | Status |
 |---|---|---|
-| Scientist migrating from MATLAB | Opens JuliaLab; Workspace panel visible, no trust prompt, full (non-restricted) mode | High |
-| Scientist migrating from MATLAB | Clicks LIVE EDITOR; a Pluto notebook opens in the browser while the REPL stays usable | High |
-| Scientist migrating from MATLAB | Cold-launches with no crash-reporter dialog | Med |
-| Developer iterating on JuliaLab | Quits and relaunches repeatedly with no orphaned processes and no port collisions | High |
+| Fixed port 41000 + pre-flight sweep | T-port-fix-A/B | ✅ |
+| Process-tree teardown (serve-web + Pluto) | T1 | ✅ |
+| View background colour (resize flash) | T2 | ⚠️ partial — flash persists |
+| Extension copy skip list | T3 | ✅ |
+| Bounded REPL start delay (2000 ms) | T4 | ✅ |
+| Workspace panel persistence | T5 | ✅ already satisfied |
+| No workspace-trust dialog | T-trust series | ✅ via fixed port |
+| LIVE EDITOR ribbon → Pluto in browser | T6–T9 | ✅ |
+| Project documentation committed to git | chore | ✅ |
+| Antigravity standing rules (.antigravity/rules.md) | docs | ✅ |
 
 ---
 
-## 3. Key Features
+## 3. Success Criteria — Final Verdicts
 
-1. **Dynamic server port (DELIVERED).** `main.js` acquires a free OS-assigned
-   port each launch; eliminates `10048` collisions and ghost-socket lockouts.
-2. **Clean process-tree teardown.** `killServer()` reaps the full codium tree
-   (node children + any spawned Julia) via `taskkill /T`.
-3. **Race-free REPL auto-start.** A bounded delay precedes `startJuliaRepl()`,
-   removing the crash-reporter race. (Readiness-probe deferred — see §8.)
-4. **No workspace-trust prompt.** Trust disabled for the single-user default
-   workspace; launches in full mode.
-5. **LIVE EDITOR ribbon button.** Ribbon click → `main.js` spawns Pluto as a
-   dedicated Julia child process that opens the browser and is reaped on quit.
-6. **Cosmetic ride-alongs.** Resize black-flash fix; build-copy skip list.
+**SC-1 — Clean teardown:** ✅ After ✕-quit, zero `node.exe`/`codium.exe`/
+`julia.exe` from the JuliaLab-spawned tree. Verified via process-diff audit.
+
+**SC-2 — Persistent workspace panel:** ✅ Julia WORKSPACE panel visible on
+2nd+ cold launches without a click. Satisfied by VSCodium's default view
+restoration; no code change required (Spike E finding).
+
+**SC-3 — Race-free REPL start:** ✅ No crash-reporter dialog across 3
+consecutive cold launches. Verified at 2000 ms bounded delay.
+
+**SC-4 — Pluto Live Editor:** ✅
+- (a) Ribbon click opens working Pluto notebook in external browser. ✅
+- (b) julia-vscode REPL stays usable alongside Pluto. ✅
+- (c) Pluto process tree (server + notebook worker) fully reaped on quit. ✅
+
+**SC-5 — Port stability:** ✅ Fixed port 41000; pre-flight reaps any stale
+serve-web before binding. Two consecutive launches confirmed, no 10048 errors.
+
+**SC-6 — No trust prompt:** ✅ Trust dialog absent on 2nd+ launch. Root cause
+was dynamic port creating a new browser origin (IndexedDB partition) each
+session. Fixed by fixed port.
 
 ---
 
-## 4. Non-Goals
+## 4. Key Findings (sprint-earned, not in original SDD)
 
-- Embedding Pluto inside the workbench (browser-external by design).
-- Installing/bundling Pluto.jl — assumed user-installed; absence handled.
-- Root-causing the serve-web state-persistence anomaly (Sprint 5 — §8).
-- Windows distribution packaging (Candidate D — own sprint).
+**Dynamic port breaks browser-state persistence.** Browser storage (IndexedDB,
+localStorage) is origin-keyed by `http://host:port`. Each dynamic-port launch
+is a new origin with no memory of prior sessions. This caused the trust dialog,
+telemetry prompt, sidebar state loss, and all H1/H2 persistence symptoms.
+Resolution: fixed port 41000 + pre-flight sweep.
+
+**serve-web trust cannot be disabled via settings.** VSCode issue #210965
+(as-designed): `security.workspace.trust.enabled` in any settings.json scope is
+ignored under serve-web. The codium-tunnel binary has no `--disable-workspace-trust`
+flag. Trust state is stored in browser IndexedDB, not on-disk settings.
+
+**`codium serve-web` daemonizes under `codium-tunnel.exe`.** The serve-web
+process tree is NOT a descendant of the spawned `cmd.exe` PID — it forks under
+`codium-tunnel.exe` in a detached subtree. `taskkill /T` on the spawn PID cannot
+reach it. The working teardown predicate: kill every process whose command line
+matches `serve-web` AND `server-data` (unique to this app, single-instance safe).
+
+**`cmd.exe /c` wrappers self-exit.** The initial hypothesis (SIGTERM the parent,
+wait, sweep children) failed because the cmd.exe wrapper may exit immediately
+after launching codium, leaving the serve-web tree reparented. The server-data
+predicate-based sweep handles this correctly regardless.
+
+**Manual PowerShell Pluto launch forms are non-deterministic.** `& julia -e
+"using Pluto; Pluto.run()"` and `Start-Process` forms sometimes self-exit before
+the server is ready. Node `child_process.spawn` with piped stdio and `detached:
+false` is deterministic. SC-4c verified against the real spawn, not the manual
+proxy.
+
+**Antigravity mis-verified teardown tasks 3× via `taskkill /IM electron.exe`.**
+This bypasses `before-quit → killServer()`. Teardown/lifecycle tasks must be
+verified by John via ✕-quit + process-diff audit. Rule added to
+`.antigravity/rules.md`.
+
+---
+
+## 5. Non-Goals (unchanged)
+
+- Embedding Pluto in the workbench.
+- Windows distribution packaging (Candidate D — Sprint 5+).
 - Ribbon APPS / INSERT / VIEW completion (Candidate C — deferred).
+- Lean4 or Wolfram panel integration.
 
 ---
 
-## 5. Success Criteria
+## 6. Constraints (final)
 
-**SC-1 — Clean teardown (revised):** After a **clean quit** (window control),
-zero `node.exe`, `codium.exe`, and `julia.exe` processes *descended from the
-JuliaLab-spawned tree* remain, verified ~2 s post-quit. Pre-existing unrelated
-processes (e.g. stale `org.julialab.ide\julia` cruft) are explicitly excluded.
-
-**SC-2 — Persistent workspace panel (satisfied):** On 2nd+ cold launches the
-Julia Workspace panel is visible without a click. **Confirmed satisfied via
-Spike E**; retained as a regression check, not a code task.
-
-**SC-3 — Race-free start:** julia-vscode's crash reporter does not appear on cold
-launch across 3 consecutive launches.
-
-**SC-4 — Pluto Live Editor (PASS-qualified):**
-- (a) Ribbon click opens a working Pluto notebook in the external browser. ✅ proven (Spike B)
-- (b) The julia-vscode REPL stays usable alongside Pluto. ✅ proven (Spike B)
-- (c) On JuliaLab quit, the Pluto process tree (server + notebook workers) is
-  fully reaped. **Deferred to T7 implementation verification** — manual launch
-  forms cannot reproduce the Node-spawned process tree.
-
-**SC-5 — Dynamic port (DELIVERED):** Two consecutive launches succeed on
-OS-assigned ports with no `10048`. ✅ proven.
-
-**SC-6 — No trust prompt:** Cold launch shows no workspace-trust dialog and no
-Restricted-Mode badge; holds across a relaunch.
-
----
-
-## 6. Constraints
-
-| Dimension | Constraint |
+| Dimension | Value |
 |---|---|
-| Language | TypeScript (extension); JavaScript (Electron main) |
-| Platform | Windows 10 x64; serve-web context |
-| Electron / VSCodium / julia-vscode | 39.8.8 / 1.121.03429 / 1.219.2 (pinned) |
-| Pluto launch | Dedicated child process from `main.js` (ADR-013); never in the REPL |
-| Pluto spawn form | Node `child_process.spawn` with piped stdio — NOT PowerShell `-e`, which is non-deterministic (Spike B finding) |
-| detect-deps | Merges into settings.json; `security.workspace.trust.enabled` is preserved (not in its managed key set) |
-| Discipline | One file per atomic task; diff review before build; commit per verified state; revert (not patch) on failure |
-| Appetite | Medium; promotion + KI-6 place the count at the upper edge (~10 tasks incl. Pluto) |
+| Server port | Fixed: 41000 |
+| Pluto port | 1234 (Pluto default, auto-increments if busy) |
+| Electron | 39.8.8 |
+| VSCodium | 1.121.03429 |
+| julia-vscode | 1.219.2 |
+| Wolfram Engine | 15.0 (auto-detected by detect-deps) |
 
 ---
 
-## 7. Risks
+## 7. Risks — Residual
 
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| `taskkill /F /T` leaves VSCodium SQLite dirty | Med | Med | SIGTERM → grace wait → `/T` sweep (ADR-012) |
-| Pluto worker processes orphan if `/T` misses them | Med | Med | T7 verification opens a notebook then quits; if workers survive, enumerate worker PIDs |
-| Non-deterministic `-e` Pluto launch | Confirmed | Med | T7 uses Node spawn with piped stdout; treat launched only on the `localhost:1234` ready line; error dialog if the child exits first |
-| Free-port race (port freed then re-bound) | Low | Low | Spawn immediately after `srv.close()`; localhost single-user (ADR-015) |
-| Disabling trust removes a security boundary | Low | Low | Acceptable for single-user IDE on a trusted-by-construction default folder (ADR-016) |
-| Bounded REPL delay too short on a slow machine | Low | Low | Tunable constant; readiness-probe noted for Sprint 5 |
+| Risk | Status |
+|---|---|
+| T2 resize flash persists | Open — KI-2 partial; setBackgroundColor not sufficient; BaseWindow/debounce timing |
+| REPL delay is machine-speed-dependent | Mitigated — 2000 ms verified; readiness probe deferred Sprint 5 |
+| Fixed port ghost on crash | Mitigated — pre-flight sweep (T-port-fix-B) reaps stale serve-web before bind |
 
 ---
 
-## 8. Open Investigations (Sprint 5 candidates)
+## 8. Sprint 5 Carry-List
 
-**Serve-web state-persistence anomaly.** Forensics of `server-data/data/User`
-found no top-level `globalStorage/state.vscdb` and several empty
-`workspaceStorage` dirs, correlating with the every-launch trust prompt. Two
-competing hypotheses, unresolved:
-- **H1 (structural):** serve-web does not persist global state in this config;
-  the persistence gap is real and broad.
-- **H2 (shutdown-induced):** global state flushes only on clean shutdown, and
-  this session's force-kills prevented it; **KI-1 clean teardown may fix it
-  incidentally.**
-Discriminator (run after KI-1 lands): launch → trust → clean quit → relaunch →
-check whether trust persists. T-trust (disable) makes SC-6 pass under both, so
-this does not block Sprint 4.
-
-**KI-3 readiness probe.** T4 ships a bounded delay; a proper readiness signal
-from `juliaExt.exports` (Spike J, deferred) is the durable fix.
+- **`--cli-data-dir` investigation:** codium-tunnel's `--help` shows
+  `--cli-data-dir <CLI_DATA_DIR>` (env: `VSCODE_CLI_DATA_DIR`). This controls
+  where CLI metadata (including possibly trust state) is stored. Passing it
+  pointed at `server-data/` may make trust state persistent independently of
+  port. Investigate before implementing.
+- **KI-3 readiness probe:** Replace the 2000 ms bounded delay in `extension.ts`
+  with a proper readiness signal from `juliaExt.exports` (Spike J, deferred).
+- **T2 resize flash:** `setBackgroundColor` set on both views; flash persists.
+  Likely cause: `debounce(setViewBounds, 16)` leaves a gap frame, or BaseWindow
+  paints before views catch up. Investigate `resize` event + immediate
+  `setViewBounds` call (no debounce).
+- **Serve-web state persistence (H1/H2):** With fixed port, browser-origin state
+  now persists across sessions. Run the H1/H2 discriminator: launch, dismiss
+  telemetry prompt, clean ✕-quit, relaunch — does the telemetry prompt stay
+  dismissed? If yes: H2 confirmed (unclean exits caused loss); fixed port +
+  clean teardown resolves it. If no: H1 (structural non-persistence in serve-web)
+  — deeper investigation needed.
+- **Windows packaging (Candidate D):** Gated behind clean-machine detect-deps
+  spike. `settings.json` now tracked with absolute paths (C:\Users\johnx\...) —
+  must be templated for distribution.
+- **Wolfram 15.0:** Auto-detected correctly by detect-deps. No action needed.
+- **Ribbon APPS/INSERT/VIEW (Candidate C):** APPS = Julia package browser or
+  extension marketplace; INSERT = snippet menu; VIEW = layout picker. Design
+  needed before implementation.

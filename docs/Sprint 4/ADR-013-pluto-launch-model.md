@@ -1,53 +1,47 @@
 # ADR-013: Pluto Live Editor Launch Model
-**Date:** 2026-06-25
-**Status:** Accepted — validated by Spike B (PASS-qualified)
+**Date:** 2026-06-25 (verified 2026-06-26)
+**Status:** Accepted — implemented and verified (SC-4 a/b/c)
 
 ## Context
-SC-4 requires launching a Pluto notebook from a ribbon click. `Pluto.run()`
-blocks the Julia session it runs in (confirmed) and opens the system browser
-itself. JuliaLab has a single julia-vscode-owned REPL that must stay usable.
-Launching a process is an OS-level concern, not a VSCodium command.
+The LIVE EDITOR ribbon tab should launch a Pluto.jl reactive notebook. `Pluto.run()`
+blocks the Julia session it runs in. JuliaLab has a single julia-vscode-owned REPL
+that must remain usable alongside Pluto.
 
-Spike B finding: manual launch forms are non-deterministic. `Pluto.run()` in the
-REPL blocks it; `& julia -e "…Pluto.run()"` foreground sometimes self-exits and
-sometimes holds; `Start-Process julia -e` detached likewise. None of these is the
-production launch path, so manual SC-4c reap testing is unreliable and was
-deferred to T7.
+Spike B finding: manual PowerShell launch forms (`& julia -e`, `Start-Process`)
+are non-deterministic — the process sometimes self-exits before the server is
+ready. Node `child_process.spawn` with piped stdio and `detached: false` is the
+correct production form.
 
 ## Decision
-Launch Pluto as a dedicated Julia child process spawned by Electron `main.js`:
-ribbon → `preload` → `ipcMain` → `child_process.spawn(<detected juliaExe>,
-['-e','using Pluto; Pluto.run()'], { stdio:['ignore','pipe','pipe'],
-detached:false })`. Register the PID with the ADR-012 reaper. This path does NOT
-use the WebSocket/extension bridge (which HOME and PLOTS use).
+Ribbon click → `preload.js` → `ipcMain` → `main.js` spawns:
+```
+spawn(juliaExe, ['-e', 'using Pluto; Pluto.run()'],
+      { stdio: ['ignore','pipe','pipe'], detached: false })
+```
+The child's PID is registered in `state.childPids` (ADR-012 reaper).
+`main.js` reads stdout and treats the launch as successful on the first line
+containing `localhost`. If the child exits before that, `dialog.showErrorBox`
+surfaces a "install Pluto" message.
 
-**Readiness via stdout (Spike B refinement):** `main.js` reads the child's piped
-stdout and treats the launch as successful only on the `localhost:1234` ready
-line; if the child exits before that line, surface an error dialog (covers the
-Pluto-not-installed and self-exit cases). Piped stdio with `detached:false` also
-keeps the child deterministically alive, avoiding the manual `-e` flakiness.
+Two ribbon dispatch paths coexist:
+- WS-bridge → VSCodium command (HOME, PLOTS): `data-command="…"`, no `data-dispatch`
+- ipcMain → process spawn (LIVE EDITOR): `data-command="pluto:launch" data-dispatch="ipc"`
 
-## Rationale
-- Long-lived OS process lifecycle belongs in `main.js`, which already owns codium
-  and its teardown — one reaper, one place.
-- A separate process bypasses the REPL → REPL stays free (SC-4b, proven).
-- The detected `julia.executablePath` is a real `julia.exe` (not a juliaup shim),
-  so `-e` works directly.
-- `Pluto.run()` performs the browser open — no URL/token plumbing.
+The `renderer.js` click handler branches on `tab.dataset.dispatch === 'ipc'`.
 
-## Alternatives Considered
-| Option | Rejected Because |
-|---|---|
-| `Pluto.run()` in the REPL (sendText) | Blocks the only REPL (SC-4b fail) |
-| `@async Pluto.run()` in the REPL | Murky interrupt/teardown; ties up the session |
-| Spawn from the extension host over WS | Extension-host lifecycle owned by codium; child leaks with codium's tree; splits teardown ownership |
-| PowerShell `Start-Process`/`-e` proxy in production | Non-deterministic self-exit (Spike B) |
+Julia executable path is read from `server-data/Machine/settings.json`
+(`julia.executablePath`), the same value detect-deps writes. Fallback: `'julia'`.
+
+## Verification (SC-4)
+- (a) Ribbon click opened working Pluto notebook in external browser. ✅
+- (b) `1+1` in the julia-vscode REPL returned `2` while Pluto was running. ✅
+- (c) After ✕-quit, `Get-CimInstance Win32_Process -Filter "name='julia.exe'"`
+  returned empty — Pluto server and notebook worker fully reaped. ✅
 
 ## Consequences
-- Two ribbon dispatch paths coexist: WS-bridge → VSCodium command (HOME, PLOTS)
-  and ipcMain → process spawn (LIVE EDITOR). Flagged in markup via
-  `data-dispatch="ipc"`; documented in DESIGN.
-- `main.js` reads `julia.executablePath` from `server-data/Machine/settings.json`.
-- Default port 1234, auto-incrementing if busy — acceptable.
-- Pluto server + per-notebook workers register with the ADR-012 reaper;
-  SC-4c verified in T7 (open a notebook, quit, expect zero Pluto-tree `julia.exe`).
+- Double-launch guard: if `plutoProcess && !plutoProcess.killed`, the IPC handler
+  no-ops. Click LIVE EDITOR twice → no second Pluto.
+- Multi-notebook management is not implemented — one Pluto server per session.
+- Pluto must be installed in the active Julia environment; absence surfaces a
+  clear error dialog.
+- Default Pluto port: 1234 (auto-increments if busy).
