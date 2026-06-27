@@ -20,7 +20,11 @@ document.querySelectorAll('.ribbon-tab').forEach(tab => {
     tab.classList.add('active');
 
     const command = tab.dataset.command;
-    if (command && command !== 'noop') {
+    if (tab.dataset.dispatch === 'ipc') {
+      if (command === 'pluto:launch') {
+        window.electronAPI.launchPluto();
+      }
+    } else if (command && command !== 'noop') {
       window.electronAPI.ribbonCommand(command);
     }
   });
