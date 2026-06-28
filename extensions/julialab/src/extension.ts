@@ -9,15 +9,16 @@ const JULIA_EXT_ID    = 'julialang.language-julia';
 const LAYOUT_DONE_KEY = 'julialab.layoutApplied';
 const RIBBON_WS_PORT  = 2999;
 
-const RIBBON_COMMANDS: Record<string, string> = {
-  'julialab.focusEditor': 'workbench.action.focusActiveEditorGroup',
-  'julialab.showPlots':   'language-julia.show-plotpane',
-};
+const ALLOWED_PREFIXES = [
+  'julialab.',
+  'workbench.action.',
+  'editor.action.',
+  'language-julia.',
+];
 
 // ── Activation ───────────────────────────────────────────────────────────────
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  registerRibbonCommands(context);
   registerWebSocketBridge(context);
   await ensureJuliaExtension();
   await applyLayoutIfFirstOpen(context);
@@ -31,20 +32,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 export function deactivate(): void {}
 
-// ── Ribbon command registration ───────────────────────────────────────────────
-
-function registerRibbonCommands(context: vscode.ExtensionContext): void {
-  for (const [commandId, vsCodeCommand] of Object.entries(RIBBON_COMMANDS)) {
-    const disposable = vscode.commands.registerCommand(commandId, async () => {
-      try {
-        await vscode.commands.executeCommand(vsCodeCommand);
-      } catch (err) {
-        console.error(`[julialab] command ${commandId} failed:`, err);
-      }
-    });
-    context.subscriptions.push(disposable);
-  }
-}
 
 // ── WebSocket ribbon bridge ───────────────────────────────────────────────────
 
@@ -60,7 +47,7 @@ function registerWebSocketBridge(context: vscode.ExtensionContext): void {
       try {
         const msg = JSON.parse(data.toString()) as { command?: string };
         const command = msg.command;
-        if (command && command in RIBBON_COMMANDS) {
+        if (command && ALLOWED_PREFIXES.some(p => command.startsWith(p))) {
           vscode.commands.executeCommand(command).then(undefined, err => {
             console.error('[julialab] ws command failed:', err);
           });
