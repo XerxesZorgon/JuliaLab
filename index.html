@@ -21,19 +21,669 @@
 </head>
 <body>
   <div id="ribbon">
-    <div id="ribbon-tabs">
-      <span class="ribbon-tab active" data-command="julialab.focusEditor">HOME</span>
-      <span class="ribbon-tab"        data-command="julialab.showPlots">PLOTS</span>
-      <span class="ribbon-tab"        data-command="noop">APPS</span>
-      <span class="ribbon-tab"        data-command="pluto:launch" data-dispatch="ipc">LIVE EDITOR</span>
-      <span class="ribbon-tab"        data-command="noop">INSERT</span>
-      <span class="ribbon-tab"        data-command="noop">VIEW</span>
+
+    <!-- ── Row 1: tab strip ── -->
+    <div id="ribbon-strip">
+      <div id="ribbon-tabs">
+        <button class="ribbon-tab active" data-tab="home">HOME</button>
+        <button class="ribbon-tab" data-tab="code">CODE</button>
+        <button class="ribbon-tab" data-tab="figures">FIGURES</button>
+        <button class="ribbon-tab" data-tab="view">VIEW</button>
+      </div>
+      <div id="win-controls">
+        <button class="win-btn" id="btn-minimize">&#x2500;</button>
+        <button class="win-btn" id="btn-maximize">&#x25A1;</button>
+        <button class="win-btn" id="btn-close">&#x2715;</button>
+      </div>
     </div>
-    <div id="win-controls">
-      <button class="win-btn" id="btn-minimize">&#x2500;</button>
-      <button class="win-btn" id="btn-maximize">&#x25A1;</button>
-      <button class="win-btn" id="btn-close">&#x2715;</button>
-    </div>
-  </div>
+
+    <!-- ── Row 2: body container ── -->
+    <div id="ribbon-body-container">
+
+      <!-- ════════════════════ HOME ════════════════════ -->
+      <div class="ribbon-body active" data-tab="home">
+
+        <div class="ribbon-tile">
+          <img src="assets/icons/JuliaLab-icon.svg" width="84" height="84" alt="JuliaLab" style="border-radius:10px;" />
+        </div>
+
+        <!-- DIRECTORY -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/current-dir.svg" width="18" height="18" alt="" /></span>
+                <span>Current Dir</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/change-dir.svg" width="18" height="18" alt="" /></span>
+                <span>Change Dir</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/new-folder.svg" width="18" height="18" alt="" /></span>
+                <span>New Folder</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/recent.svg" width="18" height="18" alt="" /></span>
+                <span>Recent</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">DIRECTORY</div>
+        </div>
+
+        <!-- SEARCH -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.findInFiles">
+                <span class="ribbon-icon"><img src="assets/icons/home/find-in-files.svg" width="18" height="18" alt="" /></span>
+                <span>Find in Files</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.replaceInFiles">
+                <span class="ribbon-icon"><img src="assets/icons/home/replace.svg" width="18" height="18" alt="" /></span>
+                <span>Replace</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.showAllSymbols">
+                <span class="ribbon-icon"><img src="assets/icons/home/symbols.svg" width="18" height="18" alt="" /></span>
+                <span>&lt; &gt; Symbols</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.quickOpen">
+                <span class="ribbon-icon"><img src="assets/icons/home/go-to-file.svg" width="18" height="18" alt="" /></span>
+                <span>Go to File</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">SEARCH</div>
+        </div>
+
+        <!-- PACKAGE MANAGER -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/pkg-repl.svg" width="18" height="18" alt="" /></span>
+                <span>Pkg REPL</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/add-package.svg" width="18" height="18" alt="" /></span>
+                <span>Add</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/remove-package.svg" width="18" height="18" alt="" /></span>
+                <span>Remove</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/status.svg" width="18" height="18" alt="" /></span>
+                <span>Status</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/instantiate.svg" width="18" height="18" alt="" /></span>
+                <span>Instantiate</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/registry.svg" width="18" height="18" alt="" /></span>
+                <span>Registry</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;justify-content:center;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/update-all-packages.svg" width="18" height="18" alt="" /></span>
+                <span>Update All</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">PACKAGE MANAGER</div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.openSettings">
+                <span class="ribbon-icon"><img src="assets/icons/home/preferences.svg" width="18" height="18" alt="" /></span>
+                <span>Preferences</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.openGlobalKeybindings">
+                <span class="ribbon-icon"><img src="assets/icons/home/keybindings.svg" width="18" height="18" alt="" /></span>
+                <span>Keybindings</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.selectTheme">
+                <span class="ribbon-icon"><img src="assets/icons/home/theme.svg" width="18" height="18" alt="" /></span>
+                <span>Theme</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/extensions.svg" width="18" height="18" alt="" /></span>
+                <span>Extensions</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">SETTINGS</div>
+        </div>
+
+        <!-- UPDATE -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/check-updates.svg" width="18" height="18" alt="" /></span>
+                <span>Check Updates</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/update-julia.svg" width="18" height="18" alt="" /></span>
+                <span>Update Julia</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/update-pkgs.svg" width="18" height="18" alt="" /></span>
+                <span>Update Pkgs</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/release-notes.svg" width="18" height="18" alt="" /></span>
+                <span>Release Notes</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">UPDATE</div>
+        </div>
+
+        <!-- HELP -->
+        <div class="ribbon-group" style="border-right:none;">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/docs.svg" width="18" height="18" alt="" /></span>
+                <span>Docs</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/examples.svg" width="18" height="18" alt="" /></span>
+                <span>Examples</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/community.svg" width="18" height="18" alt="" /></span>
+                <span>Community</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/home/about.svg" width="18" height="18" alt="" /></span>
+                <span>About</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">HELP</div>
+        </div>
+
+      </div><!-- HOME -->
+
+      <!-- ════════════════════ CODE ════════════════════ -->
+      <div class="ribbon-body" data-tab="code">
+
+        <div class="ribbon-tile">
+          <img src="assets/icons/JuliaLab-icon.svg" width="84" height="84" alt="JuliaLab" style="border-radius:10px;" />
+        </div>
+
+        <!-- PROJECT -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.files.newUntitledFile">
+                <span class="ribbon-icon"><img src="assets/icons/code/new.svg" width="18" height="18" alt="" /></span>
+                <span>New</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.files.openFile">
+                <span class="ribbon-icon"><img src="assets/icons/code/open.svg" width="18" height="18" alt="" /></span>
+                <span>Open</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.files.save">
+                <span class="ribbon-icon"><img src="assets/icons/code/save.svg" width="18" height="18" alt="" /></span>
+                <span>Save</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">PROJECT</div>
+        </div>
+
+        <!-- EDIT -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="undo">
+                <span class="ribbon-icon"><img src="assets/icons/code/undo.svg" width="18" height="18" alt="" /></span>
+                <span>Undo</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="redo">
+                <span class="ribbon-icon"><img src="assets/icons/code/redo.svg" width="18" height="18" alt="" /></span>
+                <span>Redo</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.clipboardPasteAction">
+                <span class="ribbon-icon"><img src="assets/icons/code/paste.svg" width="18" height="18" alt="" /></span>
+                <span>Paste</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/code/multi-cursor.svg" width="18" height="18" alt="" /></span>
+                <span>Multicursor</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.clipboardCutAction">
+                <span class="ribbon-icon"><img src="assets/icons/code/cut.svg" width="18" height="18" alt="" /></span>
+                <span>Cut</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.clipboardCopyAction">
+                <span class="ribbon-icon"><img src="assets/icons/code/copy.svg" width="18" height="18" alt="" /></span>
+                <span>Copy</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">EDIT</div>
+        </div>
+
+        <!-- NAVIGATE -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="editor.action.revealDefinition">
+                <span class="ribbon-icon"><img src="assets/icons/code/go-to-definition.svg" width="18" height="18" alt="" /></span>
+                <span>Go to Def</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.startFindReplaceAction">
+                <span class="ribbon-icon"><img src="assets/icons/code/find.svg" width="18" height="18" alt="" /></span>
+                <span>Find</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="workbench.action.navigateForward">
+                <span class="ribbon-icon"><img src="assets/icons/code/forward.svg" width="18" height="18" alt="" /></span>
+                <span>Forward</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.navigateBack">
+                <span class="ribbon-icon"><img src="assets/icons/code/back.svg" width="18" height="18" alt="" /></span>
+                <span>Back</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">NAVIGATE</div>
+        </div>
+
+        <!-- FORMAT -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/code/refactor.svg" width="18" height="18" alt="" /></span>
+                <span>Refactor</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.indentLines">
+                <span class="ribbon-icon"><img src="assets/icons/code/indent.svg" width="18" height="18" alt="" /></span>
+                <span>Indent</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="editor.action.commentLine">
+                <span class="ribbon-icon"><img src="assets/icons/code/comment.svg" width="18" height="18" alt="" /></span>
+                <span>Comment</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">FORMAT</div>
+        </div>
+
+        <!-- RUN -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <span class="ribbon-btn-large" data-command="language-julia.executeJuliaCodeInREPL">
+              <span class="ribbon-icon"><img src="assets/icons/code/run.svg" width="26" height="26" alt="" /></span>
+              <span>Run</span>
+            </span>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="language-julia.executeJuliaCodeInREPL">
+                <span class="ribbon-icon"><img src="assets/icons/code/run-selection.svg" width="18" height="18" alt="" /></span>
+                <span>Run Selection</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="language-julia.executeJuliaCellInREPL">
+                <span class="ribbon-icon"><img src="assets/icons/code/execute-cell.svg" width="18" height="18" alt="" /></span>
+                <span>Execute Cell</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="language-julia.restartLanguageServer">
+                <span class="ribbon-icon"><img src="assets/icons/code/restart-repl.svg" width="18" height="18" alt="" /></span>
+                <span>Restart REPL</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">RUN</div>
+        </div>
+
+        <!-- DEBUG -->
+        <div class="ribbon-group" style="border-right:none;">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/code/breakpoint.svg" width="18" height="18" alt="" /></span>
+                <span>Breakpoint</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/code/step.svg" width="18" height="18" alt="" /></span>
+                <span>Step</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/code/continue.svg" width="18" height="18" alt="" /></span>
+                <span>Continue</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">DEBUG</div>
+        </div>
+
+      </div><!-- CODE -->
+
+      <!-- ════════════════════ FIGURES ════════════════════ -->
+      <div class="ribbon-body" data-tab="figures">
+
+        <div class="ribbon-tile">
+          <img src="assets/icons/JuliaLab-icon.svg" width="84" height="84" alt="JuliaLab" style="border-radius:10px;" />
+        </div>
+
+        <!-- FIGURE -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="language-julia.show-plotpane">
+                <span class="ribbon-icon"><img src="assets/icons/figures/new.svg" width="18" height="18" alt="" /></span>
+                <span>New</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/close.svg" width="18" height="18" alt="" /></span>
+                <span>Close</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/close-all.svg" width="18" height="18" alt="" /></span>
+                <span>Close All</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/tile.svg" width="18" height="18" alt="" /></span>
+                <span>Tile</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;justify-content:center;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/cascade.svg" width="18" height="18" alt="" /></span>
+                <span>Cascade</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">FIGURE</div>
+        </div>
+
+        <!-- PLOT TYPE -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/line.svg" width="22" height="18" alt="" /></span>
+                <span>Line</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/bar.svg" width="22" height="18" alt="" /></span>
+                <span>Bar</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/scatter.svg" width="22" height="18" alt="" /></span>
+                <span>Scatter</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/area.svg" width="22" height="18" alt="" /></span>
+                <span>Area</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/histogram.svg" width="22" height="18" alt="" /></span>
+                <span>Histogram</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/boxplot.svg" width="22" height="18" alt="" /></span>
+                <span>Boxplot</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/violin.svg" width="22" height="18" alt="" /></span>
+                <span>Violin</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/contour.svg" width="22" height="18" alt="" /></span>
+                <span>Contour</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/surface.svg" width="22" height="18" alt="" /></span>
+                <span>Surface</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/heatmap.svg" width="22" height="18" alt="" /></span>
+                <span>Heatmap</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/pie-chart.svg" width="22" height="18" alt="" /></span>
+                <span>Pie Chart</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/stem.svg" width="22" height="18" alt="" /></span>
+                <span>Stem</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">PLOT TYPE</div>
+        </div>
+
+        <!-- STYLE -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/theme.svg" width="18" height="18" alt="" /></span>
+                <span>Theme</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/colors.svg" width="18" height="18" alt="" /></span>
+                <span>Colors</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/line-width.svg" width="18" height="18" alt="" /></span>
+                <span>Line Width</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/markers.svg" width="18" height="18" alt="" /></span>
+                <span>Markers</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/opacity.svg" width="18" height="18" alt="" /></span>
+                <span>Opacity</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">STYLE</div>
+        </div>
+
+        <!-- AXES -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/x-label.svg" width="18" height="18" alt="" /></span>
+                <span>X Label</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/grid.svg" width="18" height="18" alt="" /></span>
+                <span>Grid</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/x-limits.svg" width="18" height="18" alt="" /></span>
+                <span>X Limits</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/y-label.svg" width="18" height="18" alt="" /></span>
+                <span>Y Label</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/legend.svg" width="18" height="18" alt="" /></span>
+                <span>Legend</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/y-limits.svg" width="18" height="18" alt="" /></span>
+                <span>Y Limits</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">AXES</div>
+        </div>
+
+        <!-- ANIMATE -->
+        <div class="ribbon-group" style="border-right:none;">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/record.svg" width="18" height="18" alt="" /></span>
+                <span>Record</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/play.svg" width="18" height="18" alt="" /></span>
+                <span>Play</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/stop.svg" width="18" height="18" alt="" /></span>
+                <span>Stop</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/export-gif.svg" width="18" height="18" alt="" /></span>
+                <span>Export GIF</span>
+              </span>
+              <span class="ribbon-btn-small" data-command="noop">
+                <span class="ribbon-icon"><img src="assets/icons/figures/speed.svg" width="18" height="18" alt="" /></span>
+                <span>Speed</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">ANIMATE</div>
+        </div>
+
+      </div><!-- FIGURES -->
+
+      <!-- ════════════════════ VIEW ════════════════════ -->
+      <div class="ribbon-body" data-tab="view">
+
+        <div class="ribbon-tile">
+          <img src="assets/icons/JuliaLab-icon.svg" width="84" height="84" alt="JuliaLab" style="border-radius:10px;" />
+        </div>
+
+        <!-- PANES -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span class="ribbon-btn-toggle" data-command="workbench.view.explorer" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/file-browser.svg" width="16" height="16" alt="" /></span>
+                <span>FILE BROWSER</span>
+              </span>
+              <span class="ribbon-btn-toggle" data-command="workbench.action.terminal.toggleTerminal" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/command_window.svg" width="16" height="16" alt="" /></span>
+                <span>COMMAND WINDOW</span>
+              </span>
+              <span class="ribbon-btn-toggle" data-command="language-julia.show-workspace" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/workspace.svg" width="16" height="16" alt="" /></span>
+                <span>WORKSPACE</span>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span class="ribbon-btn-toggle" data-command="workbench.action.focusActiveEditorGroup" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/variable-editor.svg" width="16" height="16" alt="" /></span>
+                <span>VARIABLE EXPLORER</span>
+              </span>
+              <span class="ribbon-btn-toggle" data-command="workbench.action.focusActiveEditorGroup" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/documentation.svg" width="16" height="16" alt="" /></span>
+                <span>DOCUMENTATION</span>
+              </span>
+              <span class="ribbon-btn-toggle" data-command="workbench.action.focusActiveEditorGroup" data-toggle="true">
+                <span class="ribbon-icon"><img src="assets/icons/view/history.svg" width="16" height="16" alt="" /></span>
+                <span>HISTORY</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">PANES</div>
+        </div>
+
+        <!-- LAYOUT MANAGER -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
+              <span class="ribbon-icon" style="margin-bottom:2px;">
+                <img src="assets/icons/view/layout.svg" width="32" height="28" alt="" />
+              </span>
+              <span class="ribbon-btn-small" data-command="workbench.action.editorLayoutTwoColumns" style="width:100%;justify-content:center;">
+                <span>Load layout</span>
+              </span>
+              <div style="display:flex;gap:2px;">
+                <span class="ribbon-btn-small" data-command="noop"><span>Save layout</span></span>
+                <span class="ribbon-btn-small" data-command="noop"><span>Manage</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="ribbon-group-label">LAYOUT MANAGER</div>
+        </div>
+
+        <!-- THEME -->
+        <div class="ribbon-group">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span class="ribbon-btn-toggle active" id="theme-light" data-command="noop" data-toggle="theme">
+                <span class="ribbon-icon"><img src="assets/icons/view/light-theme.svg" width="16" height="16" alt="" /></span>
+                <span>LIGHT (default)</span>
+              </span>
+              <span class="ribbon-btn-toggle" id="theme-dark" data-command="noop" data-toggle="theme">
+                <span class="ribbon-icon"><img src="assets/icons/view/dark-theme.svg" width="16" height="16" alt="" /></span>
+                <span>DARK</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">THEME</div>
+        </div>
+
+        <!-- RIBBON -->
+        <div class="ribbon-group" style="border-right:none;">
+          <div class="ribbon-group-inner">
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span class="ribbon-btn-toggle" id="btn-hide-ribbon" data-dispatch="ipc" data-command="ribbon:hide">
+                <span class="ribbon-icon"><img src="assets/icons/view/hide-ribbon.svg" width="16" height="16" alt="" /></span>
+                <span>Hide Ribbon (F2)</span>
+              </span>
+              <span class="ribbon-btn-toggle active" id="btn-pin-ribbon" data-dispatch="ipc" data-command="ribbon:pin">
+                <span class="ribbon-icon"><img src="assets/icons/view/pin-ribbon.svg" width="16" height="16" alt="" /></span>
+                <span>Pin Ribbon</span>
+              </span>
+            </div>
+          </div>
+          <div class="ribbon-group-label">RIBBON</div>
+        </div>
+
+      </div><!-- VIEW -->
+
+    </div><!-- #ribbon-body-container -->
+  </div><!-- #ribbon -->
 </body>
 </html>

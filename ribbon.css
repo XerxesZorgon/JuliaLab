@@ -1,17 +1,26 @@
-:root {
-  --ribbon-height: 52px;
-}
+/* ribbon.css — JuliaLabApp Sprint 6
+   Light theme, #00589C strip, grouped-button body.
+   --ribbon-height is injected by main.js (ADR-021); do not add it here. */
 
-/* JuliaLabApp — Ribbon styles */
-/* MATLAB R2023b+ geometry */
+/* ── Outer shell ────────────────────────────────────────────────────────── */
 
 #ribbon {
   display: flex;
-  align-items: stretch;
-  height: var(--ribbon-height);
-  background: #f3f3f3;
-  border-bottom: 1px solid #d0d0d0;
+  flex-direction: column;
+  height: var(--ribbon-height, 124px);  /* fallback for standalone preview */
   user-select: none;
+  -webkit-app-region: drag;
+  overflow: visible;
+}
+
+/* ── Row 1: tab strip (30 px blue) ─────────────────────────────────────── */
+
+#ribbon-strip {
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  background: #00589C;
+  flex-shrink: 0;
   -webkit-app-region: drag;
 }
 
@@ -19,32 +28,40 @@
   display: flex;
   align-items: stretch;
   flex: 1;
-  -webkit-app-region: drag;
 }
 
 .ribbon-tab {
   display: inline-flex;
   align-items: center;
-  padding: 0 14px;
-  height: 100%;
+  padding: 0 12px;
   font-family: 'Segoe UI', sans-serif;
   font-size: 11px;
-  font-weight: 400;
-  color: #333333;
-  cursor: default;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  opacity: 0.75;
+  background: transparent;
+  border: none;
   border-bottom: 2px solid transparent;
+  border-top: 2px solid transparent;
+  cursor: pointer;
   -webkit-app-region: no-drag;
+  white-space: nowrap;
 }
 
 .ribbon-tab.active {
-  color: #0078d4;
-  border-bottom: 2px solid #0078d4;
+  opacity: 1;
+  background: #F0F0F0;
+  color: #000000;
+  border-bottom: 2px solid #F0F0F0;
 }
 
 .ribbon-tab:hover:not(.active) {
-  background: #e8e8e8;
-  color: #000000;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.18);
 }
+
+/* ── Window controls (on strip) ─────────────────────────────────────────── */
 
 #win-controls {
   display: flex;
@@ -53,12 +70,12 @@
 }
 
 .win-btn {
-  width: 46px;
-  height: var(--ribbon-height);
+  width: 36px;
+  height: 30px;
   border: none;
   background: transparent;
-  font-size: 16px;
-  color: #333333;
+  font-size: 15px;
+  color: #ffffff;
   cursor: default;
   display: flex;
   align-items: center;
@@ -67,10 +84,184 @@
 }
 
 .win-btn:hover {
-  background: #e5e5e5;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 #btn-close:hover {
-  background: #e81123;
+  background: #C0392B;
   color: #ffffff;
+}
+
+/* ── Row 2: body container (94 px light gray) ───────────────────────────── */
+
+#ribbon-body-container {
+  flex: 1;
+  position: relative;
+  background: #F0F0F0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ribbon-body {
+  display: none;
+  flex-direction: row;
+  align-items: stretch;
+  height: 100%;
+  background: #F0F0F0;
+}
+
+.ribbon-body.active {
+  display: flex;
+}
+
+/* ── JuliaLab icon tile ─────────────────────────────────────────────────── */
+
+.ribbon-tile {
+  width: 94px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #DCDCDC;
+  flex-shrink: 0;
+  height: 100%;
+  box-sizing: border-box;
+  -webkit-app-region: no-drag;
+}
+
+/* ── Group ──────────────────────────────────────────────────────────────── */
+
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-right: 1px solid #DCDCDC;
+  flex-shrink: 0;
+  height: 100%;
+  box-sizing: border-box;
+  -webkit-app-region: no-drag;
+}
+
+.ribbon-group-inner {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  flex: 1;
+  align-items: center;
+  padding: 4px 8px 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ribbon-group-label {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 9.5px;
+  color: #8A8A8A;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 1px 6px 4px;
+  border-top: 1px solid #DCDCDC;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.ribbon-btn-large,
+.ribbon-btn-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333333;
+}
+
+.ribbon-btn-large:hover,
+.ribbon-btn-small:hover {
+  background: rgba(0, 88, 156, 0.09);
+  border-color: rgba(0, 88, 156, 0.2);
+}
+
+.ribbon-btn-large {
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px;
+  min-width: 46px;
+  font-size: 10px;
+}
+
+.ribbon-btn-small {
+  flex-direction: row;
+  gap: 5px;
+  padding: 2px 5px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  justify-content: flex-start;
+}
+
+/* ── Icon container ─────────────────────────────────────────────────────── */
+
+.ribbon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+  overflow: visible;
+}
+
+.ribbon-icon img {
+  display: block;
+}
+
+/* ── Toggle buttons (VIEW tab — PANES, THEME) ───────────────────────────── */
+
+.ribbon-btn-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+  font-size: 10.5px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333333;
+  background: #E0E0E0;
+  border: 1px solid #C8C8C8;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+  justify-content: flex-start;
+  min-width: 120px;
+}
+
+.ribbon-btn-toggle:hover {
+  background: #D4D4D4;
+  border-color: rgba(0, 88, 156, 0.3);
+}
+
+.ribbon-btn-toggle.active {
+  background: #C5E0B4;
+  border-color: #70A854;
+  color: #1a3a1a;
+}
+
+.ribbon-btn-toggle.active:hover {
+  background: #B0D49E;
+  border-color: #5A9040;
+}
+
+/* ── Hidden ribbon state ────────────────────────────────────────────────── */
+
+#ribbon.ribbon-hidden {
+  height: 6px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+#ribbon.ribbon-hidden:hover {
+  height: 8px;
+  background: #00589C;
 }

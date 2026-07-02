@@ -3,7 +3,7 @@
 
 'use strict';
 
-const { app, BaseWindow, WebContentsView, ipcMain, dialog, shell } = require('electron');
+const { app, BaseWindow, WebContentsView, ipcMain, dialog, shell, globalShortcut } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const { detectDeps } = require('./scripts/detect-deps');
@@ -48,6 +48,7 @@ const SERVER_PORT    = 41000;
 const SERVER_DATA_DIR = path.join(__dirname, 'server-data');
 const READY_RE       = /Web UI available at/;
 const TIMEOUT_MS     = 30000;
+const RIBBON_HEIGHT  = 124;
 
 
 async function preflightPort() {
@@ -97,7 +98,7 @@ function waitForReady(proc) {
 function setViewBounds() {
   if (!state.win || !state.ribbonView) return;
   const [w, h] = state.win.getContentSize();
-  const ribbonH = 52;
+  const ribbonH = RIBBON_HEIGHT;
   state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: ribbonH });
   if (state.workbenchView) {
     state.workbenchView.setBounds({ x: 0, y: ribbonH, width: w, height: h - ribbonH });
@@ -177,7 +178,7 @@ function connectRibbonWebSocket() {
 
 function createWindow() {
   state.win = new BaseWindow({
-    width:           1280,
+    width:           1600,
     height:          800,
     frame:           false,
     show:            false,
@@ -197,6 +198,27 @@ function createWindow() {
     } else {
       console.warn('[ribbon-command] WebSocket not ready, command dropped:', command);
     }
+  });
+
+  ipcMain.on('ribbon:hide', () => {
+    if (!state.win || !state.ribbonView) return;
+    const [w, h] = state.win.getContentSize();
+    const hiddenH = 30;
+    state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: hiddenH });
+    if (state.workbenchView) {
+      state.workbenchView.setBounds({ x: 0, y: hiddenH, width: w, height: h - hiddenH });
+    }
+    console.log('[ribbon] hidden');
+  });
+
+  ipcMain.on('ribbon:pin', () => {
+    if (!state.win || !state.ribbonView) return;
+    const [w, h] = state.win.getContentSize();
+    state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: RIBBON_HEIGHT });
+    if (state.workbenchView) {
+      state.workbenchView.setBounds({ x: 0, y: RIBBON_HEIGHT, width: w, height: h - RIBBON_HEIGHT });
+    }
+    console.log('[ribbon] pinned');
   });
 
   ipcMain.on('pluto:launch', () => {
@@ -260,6 +282,11 @@ function createWindow() {
     height: 800,
   });
   state.ribbonView.webContents.loadFile(path.join(__dirname, 'index.html'));
+  state.ribbonView.webContents.on('did-finish-load', () => {
+    state.ribbonView.webContents.insertCSS(
+      `:root { --ribbon-height: ${RIBBON_HEIGHT}px; }`
+    );
+  });
   state.workbenchView = new WebContentsView();
   state.workbenchView.setBackgroundColor('#1e1e1e');
   state.win.contentView.addChildView(state.workbenchView);
@@ -311,7 +338,37 @@ app.whenReady().then(async () => {
   });
 
   createWindow();
+  globalShortcut.register('F2', () => {
+    if (!state.ribbonView) return;
+    const bounds = state.ribbonView.getBounds();
+    if (bounds.height <= 30) {
+      // ribbon is hidden — pin it
+      if (state.win) {
+        const [w, h] = state.win.getContentSize();
+        state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: RIBBON_HEIGHT });
+        if (state.workbenchView) {
+          state.workbenchView.setBounds({ x: 0, y: RIBBON_HEIGHT, width: w, height: h - RIBBON_HEIGHT });
+        }
+        state.ribbonView.webContents.executeJavaScript('pinRibbon && pinRibbon()').catch(() => {});
+      }
+    } else {
+      // ribbon is visible — hide it
+      if (state.win) {
+        const [w, h] = state.win.getContentSize();
+        const hiddenH = 30;
+        state.ribbonView.setBounds({ x: 0, y: 0, width: w, height: hiddenH });
+        if (state.workbenchView) {
+          state.workbenchView.setBounds({ x: 0, y: hiddenH, width: w, height: h - hiddenH });
+        }
+        state.ribbonView.webContents.executeJavaScript('hideRibbon && hideRibbon()').catch(() => {});
+      }
+    }
+  });
   connectRibbonWebSocket();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

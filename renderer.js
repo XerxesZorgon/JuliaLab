@@ -1,10 +1,10 @@
 // renderer.js — JuliaLabApp
-// Sprint 1 — Task 006: window control button wiring
-// Sprint 3 — Task 007: ribbon tab command dispatch
+// Sprint 6 — Task 009: tab→body switching, button dispatch, toggle, hide/pin
 
 'use strict';
 
-// Window controls
+// ── Window controls ───────────────────────────────────────────────────────────
+
 document.getElementById('btn-minimize')
   .addEventListener('click', () => window.electronAPI.minimize());
 document.getElementById('btn-maximize')
@@ -12,20 +12,86 @@ document.getElementById('btn-maximize')
 document.getElementById('btn-close')
   .addEventListener('click', () => window.electronAPI.close());
 
-// Ribbon tab clicks
-document.querySelectorAll('.ribbon-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.ribbon-tab')
-      .forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
+// ── Tab → body switching ──────────────────────────────────────────────────────
 
-    const command = tab.dataset.command;
-    if (tab.dataset.dispatch === 'ipc') {
-      if (command === 'pluto:launch') {
-        window.electronAPI.launchPluto();
-      }
-    } else if (command && command !== 'noop') {
+function activateTab(tabEl) {
+  document.querySelectorAll('.ribbon-tab')
+    .forEach(t => t.classList.remove('active'));
+  tabEl.classList.add('active');
+
+  const target = tabEl.dataset.tab;
+  document.querySelectorAll('.ribbon-body')
+    .forEach(b => b.classList.toggle('active', b.dataset.tab === target));
+}
+
+const defaultTab = document.querySelector('.ribbon-tab.active');
+if (defaultTab) activateTab(defaultTab);
+
+document.querySelectorAll('.ribbon-tab').forEach(tab => {
+  tab.addEventListener('click', () => activateTab(tab));
+});
+
+// ── Button dispatch (event delegation) ───────────────────────────────────────
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-command]');
+  if (!btn) return;
+
+  const command = btn.dataset.command;
+
+  // Ribbon hide/pin (ipc to main process) — always before noop guard
+  if (btn.dataset.dispatch === 'ipc') {
+    if (command === 'ribbon:hide') {
+      hideRibbon();
+    } else if (command === 'ribbon:pin') {
+      pinRibbon();
+    } else if (command === 'pluto:launch') {
+      window.electronAPI.launchPluto();
+    }
+    return;
+  }
+
+  // Theme radio toggle — visual only, fires even for noop command
+  if (btn.dataset.toggle === 'theme') {
+    document.querySelectorAll('[data-toggle="theme"]')
+      .forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (command && command !== 'noop') {
       window.electronAPI.ribbonCommand(command);
     }
-  });
+    return;
+  }
+
+  // Generic toggle — visual only, fires even for noop command
+  if (btn.dataset.toggle === 'true') {
+    btn.classList.toggle('active');
+    if (command && command !== 'noop') {
+      window.electronAPI.ribbonCommand(command);
+    }
+    return;
+  }
+
+  // Standard WS dispatch — skip noop
+  if (!command || command === 'noop') return;
+  window.electronAPI.ribbonCommand(command);
 });
+
+// ── Ribbon hide / pin ─────────────────────────────────────────────────────────
+
+function hideRibbon() {
+  const hideBtn = document.getElementById('btn-hide-ribbon');
+  const pinBtn  = document.getElementById('btn-pin-ribbon');
+  if (hideBtn) hideBtn.classList.add('active');
+  if (pinBtn)  pinBtn.classList.remove('active');
+  window.electronAPI.hideRibbon();
+}
+
+function pinRibbon() {
+  const hideBtn = document.getElementById('btn-hide-ribbon');
+  const pinBtn  = document.getElementById('btn-pin-ribbon');
+  if (hideBtn) hideBtn.classList.remove('active');
+  if (pinBtn)  pinBtn.classList.add('active');
+  window.electronAPI.pinRibbon();
+}
+
+

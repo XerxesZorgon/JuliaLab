@@ -1,3 +1,19 @@
+---
+{
+  "id": "file_rb7971kk",
+  "filetype": "document",
+  "filename": "rules",
+  "created_at": "2026-06-28T01:04:23.136Z",
+  "updated_at": "2026-06-28T01:04:23.136Z",
+  "meta": {
+    "location": "/",
+    "tags": [],
+    "categories": [],
+    "description": "",
+    "source": "markdown"
+  }
+}
+---
 # Antigravity Rules
 
 - **Verification Protocol:** Never quit JuliaLab with `taskkill /IM electron.exe` during verification, as it bypasses the teardown under test. Always quit via the app's ✕ (if manual) or by sending the `window:close` IPC.
