@@ -364,6 +364,11 @@ app.whenReady().then(async () => {
       }
     }
   });
+  globalShortcut.register('CommandOrControl+Shift+I', () => {
+    if (state.ribbonView) {
+      state.ribbonView.webContents.toggleDevTools();
+    }
+  });
   connectRibbonWebSocket();
 });
 
