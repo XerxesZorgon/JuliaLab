@@ -366,7 +366,12 @@ app.whenReady().then(async () => {
   });
   globalShortcut.register('CommandOrControl+Shift+I', () => {
     if (state.ribbonView) {
-      state.ribbonView.webContents.toggleDevTools();
+      const wc = state.ribbonView.webContents;
+      if (wc.isDevToolsOpened()) {
+        wc.closeDevTools();
+      } else {
+        wc.openDevTools({ mode: 'detach' });
+      }
     }
   });
   connectRibbonWebSocket();
