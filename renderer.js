@@ -64,9 +64,16 @@ document.addEventListener('click', e => {
 
   // Generic toggle — visual only, fires even for noop command
   if (btn.dataset.toggle === 'true') {
-    btn.classList.toggle('active');
+    if (!btn.dataset.sync) {
+      btn.classList.toggle('active');
+    }
     if (command && command !== 'noop') {
-      window.electronAPI.ribbonCommand(command);
+      // For state-aware commands, append the new state as a suffix
+      const isActive = btn.classList.contains('active');
+      const payload = btn.dataset.sync
+        ? command
+        : command + '|' + (isActive ? 'show' : 'hide');
+      window.electronAPI.ribbonCommand(payload);
     }
     return;
   }
@@ -96,4 +103,37 @@ function pinRibbon() {
   window.electronAPI.pinRibbon();
 }
 
+// ── Event receiver — extension → renderer (ADR-023) ──────────────────────────
 
+function connectEventReceiver() {
+  const ws = new WebSocket('ws://127.0.0.1:2999');
+
+  ws.addEventListener('open', () => {
+    // Request initial panel state sync
+    ws.send(JSON.stringify({ command: 'julialab.syncPanelState' }));
+  });
+
+  ws.addEventListener('message', e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.event === 'panelState' && msg.panel === 'terminal') {
+        const btn = document.querySelector(
+          '[data-command="workbench.action.terminal.toggleTerminal"]'
+        );
+        if (btn) btn.classList.toggle('active', msg.open);
+      }
+    } catch (_) { /* ignore malformed messages */ }
+  });
+
+  ws.addEventListener('close', () => {
+    // Reconnect after 3s if connection drops
+    setTimeout(connectEventReceiver, 3000);
+  });
+
+  ws.addEventListener('error', () => {
+    // error always precedes close; reconnect handled by close handler
+  });
+}
+
+// Wait 6s for extension host WS server to start before connecting
+setTimeout(connectEventReceiver, 6000);
