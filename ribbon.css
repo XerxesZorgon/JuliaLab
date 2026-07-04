@@ -265,3 +265,12 @@
   height: 8px;
   background: #00589C;
 }
+
+/* ── Collapsed ribbon — hide tab labels (Sprint 7) ─────────────────────── */
+
+#ribbon-strip.ribbon-tabs-hidden .ribbon-tab {
+  color: transparent;
+  pointer-events: none;
+  background: transparent;
+  border-bottom-color: transparent;
+}

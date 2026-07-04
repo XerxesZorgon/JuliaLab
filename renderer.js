@@ -79,6 +79,7 @@ document.addEventListener('click', e => {
 // ── Ribbon hide / pin ─────────────────────────────────────────────────────────
 
 function hideRibbon() {
+  document.getElementById('ribbon-strip').classList.add('ribbon-tabs-hidden');
   const hideBtn = document.getElementById('btn-hide-ribbon');
   const pinBtn  = document.getElementById('btn-pin-ribbon');
   if (hideBtn) hideBtn.classList.add('active');
@@ -87,6 +88,7 @@ function hideRibbon() {
 }
 
 function pinRibbon() {
+  document.getElementById('ribbon-strip').classList.remove('ribbon-tabs-hidden');
   const hideBtn = document.getElementById('btn-hide-ribbon');
   const pinBtn  = document.getElementById('btn-pin-ribbon');
   if (hideBtn) hideBtn.classList.remove('active');
