@@ -68,11 +68,14 @@ document.addEventListener('click', e => {
       btn.classList.toggle('active');
     }
     if (command && command !== 'noop') {
-      // For state-aware commands, append the new state as a suffix
+      // Only COMMAND WINDOW uses the state-aware |show|hide suffix
       const isActive = btn.classList.contains('active');
-      const payload = btn.dataset.sync
-        ? command
-        : command + '|' + (isActive ? 'show' : 'hide');
+      const needsStateSuffix = command.startsWith(
+        'workbench.action.terminal.toggleTerminal'
+      );
+      const payload = needsStateSuffix
+        ? command + '|' + (isActive ? 'show' : 'hide')
+        : command;
       window.electronAPI.ribbonCommand(payload);
     }
     return;

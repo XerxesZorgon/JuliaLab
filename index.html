@@ -51,17 +51,17 @@
         <div class="ribbon-group">
           <div class="ribbon-group-inner">
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.cdHere">
                 <span class="ribbon-icon"><img src="assets/icons/home/current-dir.svg" width="18" height="18" alt="" /></span>
                 <span>Current Dir</span>
               </span>
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.changeCurrentEnvironment">
                 <span class="ribbon-icon"><img src="assets/icons/home/change-dir.svg" width="18" height="18" alt="" /></span>
                 <span>Change Dir</span>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="workbench.action.files.newFolder">
                 <span class="ribbon-icon"><img src="assets/icons/home/new-folder.svg" width="18" height="18" alt="" /></span>
                 <span>New Folder</span>
               </span>
@@ -123,7 +123,7 @@
                 <span class="ribbon-icon"><img src="assets/icons/home/status.svg" width="18" height="18" alt="" /></span>
                 <span>Status</span>
               </span>
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.instantiateEnvironment">
                 <span class="ribbon-icon"><img src="assets/icons/home/instantiate.svg" width="18" height="18" alt="" /></span>
                 <span>Instantiate</span>
               </span>
@@ -344,24 +344,20 @@
         <!-- RUN -->
         <div class="ribbon-group">
           <div class="ribbon-group-inner">
-            <!-- Tier 2: language-julia.executeJuliaCodeInREPL — verify before wiring -->
-            <span class="ribbon-btn-large" data-command="noop">
+            <span class="ribbon-btn-large" data-command="language-julia.executeFile">
               <span class="ribbon-icon"><img src="assets/icons/code/run.svg" width="26" height="26" alt="" /></span>
               <span>Run</span>
             </span>
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <!-- Tier 2: language-julia.executeJuliaCodeInREPL -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.executeJuliaCodeInREPL">
                 <span class="ribbon-icon"><img src="assets/icons/code/run-selection.svg" width="18" height="18" alt="" /></span>
                 <span>Run Selection</span>
               </span>
-              <!-- Tier 2: language-julia.executeJuliaCellInREPL -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.executeCell">
                 <span class="ribbon-icon"><img src="assets/icons/code/execute-cell.svg" width="18" height="18" alt="" /></span>
                 <span>Execute Cell</span>
               </span>
-              <!-- Tier 2: language-julia.restartLanguageServer — likely language-julia.restartREPL, verify -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.restartREPL">
                 <span class="ribbon-icon"><img src="assets/icons/code/restart-repl.svg" width="18" height="18" alt="" /></span>
                 <span>Restart REPL</span>
               </span>
@@ -374,15 +370,15 @@
         <div class="ribbon-group" style="border-right:none;">
           <div class="ribbon-group-inner">
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="editor.debug.action.toggleBreakpoint">
                 <span class="ribbon-icon"><img src="assets/icons/code/breakpoint.svg" width="18" height="18" alt="" /></span>
                 <span>Breakpoint</span>
               </span>
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="workbench.action.debug.stepOver">
                 <span class="ribbon-icon"><img src="assets/icons/code/step.svg" width="18" height="18" alt="" /></span>
                 <span>Step</span>
               </span>
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="workbench.action.debug.continue">
                 <span class="ribbon-icon"><img src="assets/icons/code/continue.svg" width="18" height="18" alt="" /></span>
                 <span>Continue</span>
               </span>
@@ -408,13 +404,13 @@
                 <span class="ribbon-icon"><img src="assets/icons/figures/new.svg" width="18" height="18" alt="" /></span>
                 <span>New</span>
               </span>
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.plotpane-delete">
                 <span class="ribbon-icon"><img src="assets/icons/figures/close.svg" width="18" height="18" alt="" /></span>
                 <span>Close</span>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="language-julia.plotpane-delete-all">
                 <span class="ribbon-icon"><img src="assets/icons/figures/close-all.svg" width="18" height="18" alt="" /></span>
                 <span>Close All</span>
               </span>
@@ -626,8 +622,7 @@
                 <span class="ribbon-icon"><img src="assets/icons/view/variable-editor.svg" width="16" height="16" alt="" /></span>
                 <span>VARIABLE EXPLORER</span>
               </span>
-              <!-- Tier 2: julia documentation panel command — verify -->
-              <span class="ribbon-btn-toggle" data-command="noop" data-toggle="true">
+              <span class="ribbon-btn-toggle" data-command="language-julia.show-documentation-pane" data-toggle="true">
                 <span class="ribbon-icon"><img src="assets/icons/view/documentation.svg" width="16" height="16" alt="" /></span>
                 <span>DOCUMENTATION</span>
               </span>
