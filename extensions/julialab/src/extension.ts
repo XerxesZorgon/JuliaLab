@@ -23,6 +23,18 @@ const connectedClients = new Set<import('ws').WebSocket>();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   registerWebSocketBridge(context);
+  // Doc opener commands — open URLs in system default browser
+  context.subscriptions.push(
+    vscode.commands.registerCommand('julialab.openJuliaDocs', () =>
+      vscode.env.openExternal(
+        vscode.Uri.parse('https://docs.julialang.org/en/v1/'))),
+    vscode.commands.registerCommand('julialab.openJuliaExamples', () =>
+      vscode.env.openExternal(
+        vscode.Uri.parse('https://julialang.org/learning/'))),
+    vscode.commands.registerCommand('julialab.openJuliaCommunity', () =>
+      vscode.env.openExternal(
+        vscode.Uri.parse('https://discourse.julialang.org/'))),
+  );
   // ADR-023: terminal panel state sync for COMMAND WINDOW ribbon button
   context.subscriptions.push(
     // Fires when terminal panel focus changes (show/hide approximation)
