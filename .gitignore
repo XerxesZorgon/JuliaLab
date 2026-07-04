@@ -15,3 +15,4 @@ server-data/extensions/julialab/
 .cursor/
 .mcp.json
 .vscode/
+server-data/last-workspace.json
