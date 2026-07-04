@@ -81,6 +81,13 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // Keyboard injection — sends key event directly to workbench view
+  if (btn.dataset.dispatch === 'kb') {
+    const key = btn.dataset.key;
+    if (key) window.electronAPI.sendKey(key);
+    return;
+  }
+
   // Standard WS dispatch — skip noop
   if (!command || command === 'noop') return;
   window.electronAPI.ribbonCommand(command);

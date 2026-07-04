@@ -257,18 +257,15 @@
         <div class="ribbon-group">
           <div class="ribbon-group-inner">
             <div style="display:flex;flex-direction:column;gap:2px;">
-              <!-- serve-web: editor.action.undo requires workbench DOM focus; use Ctrl+Z -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="noop" data-dispatch="kb" data-key="ctrl+z">
                 <span class="ribbon-icon"><img src="assets/icons/code/undo.svg" width="18" height="18" alt="" /></span>
                 <span>Undo</span>
               </span>
-              <!-- serve-web: editor.action.redo requires workbench DOM focus; use Ctrl+Y -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="noop" data-dispatch="kb" data-key="ctrl+y">
                 <span class="ribbon-icon"><img src="assets/icons/code/redo.svg" width="18" height="18" alt="" /></span>
                 <span>Redo</span>
               </span>
-              <!-- serve-web: clipboard commands require workbench DOM focus; use Ctrl+V -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="noop" data-dispatch="kb" data-key="ctrl+v">
                 <span class="ribbon-icon"><img src="assets/icons/code/paste.svg" width="18" height="18" alt="" /></span>
                 <span>Paste</span>
               </span>
@@ -278,13 +275,11 @@
                 <span class="ribbon-icon"><img src="assets/icons/code/multi-cursor.svg" width="18" height="18" alt="" /></span>
                 <span>Multicursor</span>
               </span>
-              <!-- serve-web: clipboard commands require workbench DOM focus; use Ctrl+X -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="noop" data-dispatch="kb" data-key="ctrl+x">
                 <span class="ribbon-icon"><img src="assets/icons/code/cut.svg" width="18" height="18" alt="" /></span>
                 <span>Cut</span>
               </span>
-              <!-- serve-web: clipboard commands require workbench DOM focus; use Ctrl+C -->
-              <span class="ribbon-btn-small" data-command="noop">
+              <span class="ribbon-btn-small" data-command="noop" data-dispatch="kb" data-key="ctrl+c">
                 <span class="ribbon-icon"><img src="assets/icons/code/copy.svg" width="18" height="18" alt="" /></span>
                 <span>Copy</span>
               </span>
