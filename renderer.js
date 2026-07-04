@@ -3,6 +3,13 @@
 
 'use strict';
 
+// ── FIGURES plot configuration accumulator (Sprint 8) ─────────────────────────
+window.plotConfig = {
+  type:  null,  // string: selected plot type ('scatter', 'line', etc.)
+  style: [],    // array: active style options
+  axes:  [],    // array: active axes options
+};
+
 // ── Window controls ───────────────────────────────────────────────────────────
 
 document.getElementById('btn-minimize')
@@ -77,6 +84,30 @@ document.addEventListener('click', e => {
         ? command + '|' + (isActive ? 'show' : 'hide')
         : command;
       window.electronAPI.ribbonCommand(payload);
+    }
+    return;
+  }
+
+  // FIGURES selection — radio (plot-type) or multi-toggle (style/axes)
+  if (btn.dataset.group) {
+    const group = btn.dataset.group;
+    const value = btn.dataset.value;
+    if (group === 'plot-type') {
+      const wasActive = btn.classList.contains('active');
+      document.querySelectorAll('[data-group="plot-type"]')
+        .forEach(b => b.classList.remove('active'));
+      if (!wasActive) btn.classList.add('active');
+      window.plotConfig.type = wasActive ? null : value;
+    } else if (group === 'plot-style') {
+      btn.classList.toggle('active');
+      const idx = window.plotConfig.style.indexOf(value);
+      if (idx === -1) window.plotConfig.style.push(value);
+      else window.plotConfig.style.splice(idx, 1);
+    } else if (group === 'plot-axes') {
+      btn.classList.toggle('active');
+      const idx = window.plotConfig.axes.indexOf(value);
+      if (idx === -1) window.plotConfig.axes.push(value);
+      else window.plotConfig.axes.splice(idx, 1);
     }
     return;
   }

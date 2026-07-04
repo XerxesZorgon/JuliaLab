@@ -274,3 +274,63 @@
   background: transparent;
   border-bottom-color: transparent;
 }
+
+/* ── FIGURES selection buttons (Sprint 8) ──────────────────────────────── */
+
+.ribbon-btn-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 5px;
+  font-size: 10.5px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #333333;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  white-space: nowrap;
+  justify-content: flex-start;
+}
+
+.ribbon-btn-select:hover {
+  background: rgba(0, 88, 156, 0.09);
+  border-color: rgba(0, 88, 156, 0.2);
+}
+
+.ribbon-btn-select.active {
+  background: #DDEEFF;
+  border-color: #00589C;
+  color: #003366;
+}
+
+/* ── FIGURES Plot button (Sprint 8) ────────────────────────────────────── */
+
+.ribbon-btn-plot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 10px;
+  min-width: 52px;
+  font-size: 10px;
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2E8B3D;
+  border: 1px solid #1a5c27;
+  border-radius: 4px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.ribbon-btn-plot:hover {
+  background: #3aaa4d;
+  border-color: #1a5c27;
+}
+
+.ribbon-btn-plot:active {
+  background: #1a5c27;
+}
