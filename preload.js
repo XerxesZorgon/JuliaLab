@@ -14,4 +14,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   hideRibbon:    ()        => ipcRenderer.send('ribbon:hide'),
   pinRibbon:     ()        => ipcRenderer.send('ribbon:pin'),
   launchPluto:   () => ipcRenderer.send('pluto:launch'),
+  sendKey:       (key) => ipcRenderer.send('workbench-key', key),
 });

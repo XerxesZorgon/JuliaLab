@@ -221,6 +221,21 @@ function createWindow() {
     console.log('[ribbon] pinned');
   });
 
+  ipcMain.on('workbench-key', (_event, key) => {
+    if (!state.workbenchView) return;
+    const wc = state.workbenchView.webContents;
+    const parts = key.toLowerCase().split('+');
+    const keyCode = parts[parts.length - 1].toUpperCase();
+    const modifiers = parts.slice(0, -1).map(m =>
+      m === 'ctrl'  ? 'ctrl'  :
+      m === 'shift' ? 'shift' :
+      m === 'alt'   ? 'alt'   : m
+    );
+    wc.focus();
+    wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers });
+    wc.sendInputEvent({ type: 'keyUp',   keyCode, modifiers });
+  });
+
   ipcMain.on('pluto:launch', () => {
     if (plutoProcess && !plutoProcess.killed) {
       console.log('[pluto] already running');
