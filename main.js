@@ -28,17 +28,40 @@ function getJuliaExe() {
 }
 
 const DEFAULT_WORKSPACE = path.join(os.homedir(), 'JuliaLab');
+const LAST_WORKSPACE_FILE = path.join(__dirname, 'server-data', 'last-workspace.json');
+
+function loadLastWorkspace() {
+  try {
+    const data = JSON.parse(fs.readFileSync(LAST_WORKSPACE_FILE, 'utf8'));
+    if (data.workspace && fs.existsSync(data.workspace)) {
+      return data.workspace;
+    }
+  } catch (_) { /* no saved workspace — use default */ }
+  return DEFAULT_WORKSPACE;
+}
+
+function saveLastWorkspace(workspacePath) {
+  try {
+    fs.writeFileSync(
+      LAST_WORKSPACE_FILE,
+      JSON.stringify({ workspace: workspacePath }),
+      'utf8'
+    );
+  } catch (_) { /* non-fatal */ }
+}
+
 const RIBBON_WS_PORT    = 2999;
 
 const state = {
-  win:           null,
-  ribbonView:    null,
-  workbenchView: null,
-  serverProcess: null,
-  serverPort:    null,
-  shuttingDown:  false,
-  ribbonWs:      null,
-  childPids:     new Set(),   // extra spawned trees to reap on quit (e.g. Pluto)
+  win:             null,
+  ribbonView:      null,
+  workbenchView:   null,
+  serverProcess:   null,
+  serverPort:      null,
+  shuttingDown:    false,
+  ribbonWs:        null,
+  childPids:       new Set(),   // extra spawned trees to reap on quit (e.g. Pluto)
+  activeWorkspace: null,
 };
 
 let plutoProcess = null;
@@ -59,7 +82,9 @@ async function preflightPort() {
 }
 
 function spawnServer() {
-  fs.mkdirSync(DEFAULT_WORKSPACE, { recursive: true });
+  const workspace = loadLastWorkspace();
+  fs.mkdirSync(workspace, { recursive: true });
+  state.activeWorkspace = workspace;
   state.serverPort = SERVER_PORT;
   state.serverProcess = spawn('cmd.exe', [
     '/c', CODIUM_BIN + '.cmd',
@@ -68,7 +93,7 @@ function spawnServer() {
     '--port',            String(state.serverPort),
     '--server-data-dir', SERVER_DATA_DIR,
     '--without-connection-token',
-    '--default-folder',  DEFAULT_WORKSPACE,
+    '--default-folder',  workspace,
   ], { stdio: ['ignore', 'pipe', 'pipe'], shell: false });
 
   state.serverProcess.stderr.on('data', d => process.stderr.write(d));
@@ -278,6 +303,9 @@ function createWindow() {
   app.on('before-quit', async (e) => {
     if (state.shuttingDown) return;
     e.preventDefault();
+    if (state.activeWorkspace) {
+      saveLastWorkspace(state.activeWorkspace);
+    }
     await killServer();
     app.exit(0);
   });
@@ -306,9 +334,27 @@ function createWindow() {
   state.workbenchView.setBackgroundColor('#1e1e1e');
   state.win.contentView.addChildView(state.workbenchView);
   setViewBounds();
-  state.workbenchView.webContents.loadURL(
-    `http://127.0.0.1:${state.serverPort}`
-  );
+
+  // Track workspace folder changes via URL navigation
+  state.workbenchView.webContents.on('did-navigate', (_event, url) => {
+    try {
+      const raw = new URL(url).searchParams.get('folder');
+      if (raw) {
+        // VSCodium serve-web encodes Windows paths as /C:/... — strip leading /
+        const folder = raw.replace(/^\/([A-Za-z]:)/, '$1').replace(/\//g, '\\');
+        state.activeWorkspace = folder;
+        console.log('[workspace] updated:', folder);
+      }
+    } catch (_) {}
+  });
+
+  // Delay workbench load by 2s so VSCodium file system provider
+  // fully initializes before session restore fires (fixes KI session-restore)
+  setTimeout(() => {
+    state.workbenchView.webContents.loadURL(
+      `http://127.0.0.1:${state.serverPort}`
+    );
+  }, 2000);
   state.win.on('resize', setViewBounds);
   state.win.show();
 }
