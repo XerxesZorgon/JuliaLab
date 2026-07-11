@@ -218,7 +218,10 @@ function createWindow() {
 
   ipcMain.on('ribbon-command', (_event, command) => {
     if (state.ribbonWs?.readyState === WebSocket.OPEN) {
-      state.ribbonWs.send(JSON.stringify({ command }));
+      const message = (typeof command === 'object' && command !== null)
+        ? command
+        : { command };
+      state.ribbonWs.send(JSON.stringify(message));
       console.log('[ribbon-command] sent:', command);
     } else {
       console.warn('[ribbon-command] WebSocket not ready, command dropped:', command);

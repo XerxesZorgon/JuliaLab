@@ -11,6 +11,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "julialab.openPlotBuilder",
+        "title": "JuliaLab: Open Plot Builder"
+      },
+      {
         "command": "julialab.focusEditor",
         "title": "JuliaLab: Focus Editor"
       },

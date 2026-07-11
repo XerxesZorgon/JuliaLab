@@ -119,6 +119,15 @@ document.addEventListener('click', e => {
     return;
   }
 
+  // FIGURES plot builder
+  if (btn.dataset.dispatch === 'plot-builder') {
+    window.electronAPI.ribbonCommand({
+      command: 'julialab.openPlotBuilder',
+      args: [window.plotConfig]
+    });
+    return;
+  }
+
   // Standard WS dispatch — skip noop
   if (!command || command === 'noop') return;
   window.electronAPI.ribbonCommand(command);

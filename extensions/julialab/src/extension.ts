@@ -2,6 +2,9 @@
 // Sprint 3: auto-start REPL, layout preset, WebSocket ribbon bridge
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,6 +38,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.env.openExternal(
         vscode.Uri.parse('https://discourse.julialang.org/'))),
   );
+
+
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('julialab.openPlotBuilder', async (config?: PlotConfig) => {
+      await openPlotBuilderPanel(context, config ?? { type: null, style: [], axes: [] });
+    })
+  );
+
   // ADR-023: terminal panel state sync for COMMAND WINDOW ribbon button
   context.subscriptions.push(
     // Fires when terminal panel focus changes (show/hide approximation)
@@ -73,8 +85,14 @@ function registerWebSocketBridge(context: vscode.ExtensionContext): void {
     ws.on('close', () => connectedClients.delete(ws));
     ws.on('message', (data: Buffer) => {
       try {
-        const msg = JSON.parse(data.toString()) as { command?: string };
+        const msg = JSON.parse(data.toString()) as { command?: string; args?: any[] };
         const command = msg.command;
+
+        fs.writeFileSync(
+          path.join(context.extensionPath, 'ws-dispatch-probe.txt'),
+          JSON.stringify({ command, args: msg.args ?? null }, null, 2)
+        );
+
         if (command === 'julialab.syncPanelState') {
           // Immediately broadcast current terminal state to the requesting client
           const termOpen = vscode.window.terminals.length > 0;
@@ -97,7 +115,8 @@ function registerWebSocketBridge(context: vscode.ExtensionContext): void {
               });
           }
         } else if (command && ALLOWED_PREFIXES.some(p => command.startsWith(p))) {
-          vscode.commands.executeCommand(command).then(undefined, err => {
+          const args: any[] = Array.isArray(msg.args) ? msg.args : [];
+          vscode.commands.executeCommand(command, ...args).then(undefined, err => {
             console.error('[julialab] ws command failed:', err);
           });
         }
@@ -176,4 +195,139 @@ async function startJuliaRepl(): Promise<void> {
       'JuliaLab: Julia REPL did not start automatically. Use Ctrl+Shift+P → "Julia: Start REPL".'
     );
   }
+}
+
+// ── Plot Builder (Task 003) ───────────────────────────────────────────────────
+
+function getNonce(): string {
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+function getPlotBuilderHtml(
+  webview: vscode.Webview,
+  context: vscode.ExtensionContext
+): string {
+  const htmlPath = path.join(context.extensionPath, 'media', 'plot-builder.html');
+  const jsPath = path.join(context.extensionPath, 'media', 'plot-builder.js');
+  let html = fs.readFileSync(htmlPath, 'utf-8');
+  const scriptContent = fs.readFileSync(jsPath, 'utf-8');
+
+  const nonce = getNonce();
+  html = html
+    .replace(/__NONCE__/g, nonce)
+    .replace('__SCRIPT_CONTENT__', () => scriptContent);
+
+
+  return html;
+}
+
+interface PlotConfig {
+  type: string | null;
+  style: string[];
+  axes: string[];
+}
+
+let plotBuilderPanel: vscode.WebviewPanel | undefined;
+
+async function openPlotBuilderPanel(context: vscode.ExtensionContext, config: PlotConfig): Promise<void> {
+  if (plotBuilderPanel) {
+    plotBuilderPanel.reveal();
+  } else {
+    plotBuilderPanel = vscode.window.createWebviewPanel(
+      'julialabPlotBuilder',
+      'Plot Builder',
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
+      }
+    );
+    // Real UI (CSP, dropdowns, Run button) is Task 004
+    plotBuilderPanel.webview.html = getPlotBuilderHtml(plotBuilderPanel.webview, context);
+    plotBuilderPanel.onDidDispose(() => { plotBuilderPanel = undefined; });
+    plotBuilderPanel.webview.onDidReceiveMessage(msg => {
+      // Keep the probe write — still useful for future debugging, low cost
+      fs.writeFileSync(
+        path.join(context.extensionPath, 'panel-message-probe.txt'),
+        JSON.stringify(msg, null, 2)
+      );
+
+      if (msg.command === 'runPlot') {
+        const terminal = vscode.window.terminals.find(t => t.name.includes('Julia'));
+        if (!terminal) {
+          vscode.window.showWarningMessage(
+            'JuliaLab: Julia REPL terminal not found — cannot run plot.'
+          );
+          return;
+        }
+        terminal.sendText(msg.code, true);
+      }
+    });
+  }
+
+  const vars = await getWorkspaceVars();
+  const initMessage = { command: 'init', vars, plotConfig: config };
+  plotBuilderPanel.webview.postMessage(initMessage);
+  // Also probe it, since the placeholder HTML has no script to display it yet
+  fs.writeFileSync(
+    path.join(context.extensionPath, 'init-message-probe.txt'),
+    JSON.stringify(initMessage, null, 2)
+  );
+}
+
+// ── File-based Workspace Variables (Task 003) ─────────────────────────────────
+
+interface WorkspaceVar { name: string; type: string; }
+
+async function getWorkspaceVars(): Promise<WorkspaceVar[]> {
+  const outputPath = path.join(os.tmpdir(), 'julialab-workspace-vars.json');
+
+  // Clear any stale output from a previous run so we don't read a false
+  // positive before Julia has written fresh data.
+  if (fs.existsSync(outputPath)) {
+    fs.unlinkSync(outputPath);
+  }
+
+  const juliaPath = outputPath.replace(/\\/g, '/');
+  const dumpCode = `begin
+vars = filter(x -> x != :ans, names(Main))
+result = [(name=string(v), type=string(typeof(getfield(Main, v)))) for v in vars if isdefined(Main, v)]
+tmp_path = "${juliaPath}.tmp"
+open(tmp_path, "w") do io
+    write(io, "[" * join(["{\\"name\\":\\"$(r.name)\\",\\"type\\":\\"$(r.type)\\"}" for r in result], ",") * "]")
+end
+mv(tmp_path, "${juliaPath}", force=true)
+end`;
+
+  const waitForFile = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      watcher.close();
+      reject(new Error('TIMEOUT: workspace vars file was not written within 10s'));
+    }, 10000);
+
+    const watcher = fs.watch(os.tmpdir(), (eventType, filename) => {
+      if (filename === 'julialab-workspace-vars.json') {
+        clearTimeout(timeout);
+        watcher.close();
+        resolve();
+      }
+    });
+  });
+
+  const terminal = vscode.window.terminals.find(t => t.name.includes('Julia'));
+  if (!terminal) {
+    throw new Error('NO_JULIA_TERMINAL: Julia REPL terminal not found — is it running?');
+  }
+  terminal.sendText(dumpCode, true);
+
+  await waitForFile;
+
+  const raw = fs.readFileSync(outputPath, 'utf-8');
+  return JSON.parse(raw) as WorkspaceVar[];
 }

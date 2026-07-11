@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    label { display: block; margin-top: 0.75em; font-weight: bold; }
+    select, button { margin-top: 0.25em; padding: 0.3em; }
+    #plot-config-summary { margin-top: 1em; padding: 0.75em; background: #f0f0f0; border-radius: 4px; }
+    .coming-soon { color: #a05a00; font-style: italic; }
+    #run-btn { margin-top: 1em; padding: 0.5em 1.5em; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h3>Plot Builder</h3>
+
+  <label for="x-var">X variable</label>
+  <select id="x-var"><option value="">-- select X --</option></select>
+
+  <label for="y-var">Y variable</label>
+  <select id="y-var"><option value="">-- select Y --</option></select>
+
+  <label for="z-var" style="display:none;" id="z-var-label">Z variable</label>
+  <select id="z-var" style="display:none;"><option value="">-- none --</option></select>
+
+  <div id="plot-config-summary">
+    <strong>Current selection:</strong>
+    <div id="config-summary-text">waiting for data...</div>
+    <p class="coming-soon" hidden>
+      Using default color/opacity/theme settings — custom controls coming
+      in a future release.
+    </p>
+  </div>
+
+  <button id="run-btn">Run</button>
+
+  <script nonce="__NONCE__">__SCRIPT_CONTENT__</script>
+</body>
+</html>

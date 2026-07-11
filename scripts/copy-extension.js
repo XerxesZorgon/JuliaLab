@@ -26,4 +26,5 @@ function copyDir(src, dest) {
 
 console.log('[copy-extension] copying julialab → server-data/extensions/julialab');
 copyDir(SRC, DEST);
+try { fs.unlinkSync(path.join(__dirname, '..', 'server-data', 'extensions', 'extensions.json')); } catch(e) {}
 console.log('[copy-extension] done.');
