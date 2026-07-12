@@ -24,6 +24,25 @@ const connectedClients = new Set<import('ws').WebSocket>();
 
 // ── Activation ───────────────────────────────────────────────────────────────
 
+class PlotVariablesProvider implements vscode.TreeDataProvider<WorkspaceVar> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<void>();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private vars: WorkspaceVar[] = [];
+
+  refresh(vars: WorkspaceVar[]): void {
+    this.vars = vars;
+    this._onDidChangeTreeData.fire();
+  }
+
+  getTreeItem(el: WorkspaceVar): vscode.TreeItem {
+    return new vscode.TreeItem(`${el.name} (${el.type})`);
+  }
+
+  getChildren(): WorkspaceVar[] {
+    return this.vars;
+  }
+}
+
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   registerWebSocketBridge(context);
   // Doc opener commands — open URLs in system default browser
@@ -39,7 +58,181 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.Uri.parse('https://discourse.julialang.org/'))),
   );
 
+  const plotVarsProvider = new PlotVariablesProvider();
+  const plotVarsTreeView = vscode.window.createTreeView('julialabPlotVariables', {
+    treeDataProvider: plotVarsProvider,
+    canSelectMany: true
+  });
+  context.subscriptions.push(plotVarsTreeView);
 
+  let orderedSelection: string[] = [];
+
+  interface PersistentPlotState {
+    selectedVarsOrdered: string[];
+    plotConfig: { type: string | null; style: string[]; axes: string[] };
+  }
+
+  let plotState: PersistentPlotState = {
+    selectedVarsOrdered: [],
+    plotConfig: { type: null, style: [], axes: [] }
+  };
+
+  function minVarsNeeded(type: string | null): number {
+    if (!type) return 2;
+    if (type === 'histogram') return 1;
+    if (['surface', 'contour'].includes(type)) return 3;
+    return 2;
+  }
+
+  function generatePlotCode(xVar: string, yVar: string, zVar: string | null, plotConfig: PersistentPlotState['plotConfig']): string {
+    const usesStatsPlots = ['boxplot', 'violin', 'pie'].includes(plotConfig.type ?? '');
+    const preambleParts: string[] = [];
+    preambleParts.push('using Plots'); // always, per Sprint 9 Task 007 fix
+    if (usesStatsPlots) preambleParts.push('using StatsPlots');
+    if (plotConfig.style.includes('theme')) preambleParts.push('theme(:default)');
+    const preamble = preambleParts.join('\n') + '\n';
+
+    const kwargs: string[] = [];
+    if (plotConfig.type && !['line', 'histogram', 'boxplot', 'violin', 'pie', 'area'].includes(plotConfig.type)) {
+      kwargs.push(`seriestype=:${plotConfig.type}`);
+    }
+    if (plotConfig.style.includes('markers'))   kwargs.push('markershape=:circle');
+    if (plotConfig.style.includes('linewidth')) kwargs.push('linewidth=2');
+    if (plotConfig.style.includes('colors'))    kwargs.push('color=:auto');
+    if (plotConfig.style.includes('opacity'))   kwargs.push('alpha=0.7');
+    if (plotConfig.axes.includes('xlabel')) kwargs.push('xlabel="X"');
+    if (plotConfig.axes.includes('ylabel')) kwargs.push('ylabel="Y"');
+    if (plotConfig.axes.includes('legend')) kwargs.push('legend=true');
+    if (plotConfig.axes.includes('grid'))   kwargs.push('grid=true');
+
+    return preamble + buildCallArgs(xVar, yVar, zVar, plotConfig, kwargs);
+  }
+
+  function kwargsStr(kwargs: string[]): string {
+    return kwargs.length ? ', ' + kwargs.join(', ') : '';
+  }
+
+  function buildCallArgs(xVar: string, yVar: string, zVar: string | null, plotConfig: PersistentPlotState['plotConfig'], kwargs: string[]): string {
+    if (plotConfig.type === 'histogram') {
+      return `histogram(${xVar}${kwargsStr(kwargs)})`;
+    }
+    if (plotConfig.type === 'area') {
+      return `areaplot(${xVar}, ${yVar}${kwargsStr(kwargs)})`;
+    }
+    if (['surface', 'contour'].includes(plotConfig.type ?? '') && zVar) {
+      return `plot(${xVar}, ${yVar}, ${zVar}${kwargsStr(kwargs)})`;
+    }
+    if (plotConfig.type === 'pie') {
+      return `pie(${xVar}, ${yVar}${kwargsStr(kwargs)})`;
+    }
+    if (['boxplot', 'violin'].includes(plotConfig.type ?? '')) {
+      return `${plotConfig.type}(${xVar}, ${yVar}${kwargsStr(kwargs)})`;
+    }
+    return `plot(${xVar}, ${yVar}${kwargsStr(kwargs)})`;
+  }
+
+  function regeneratePlot(): void {
+    plotState.selectedVarsOrdered = orderedSelection;
+    const needed = minVarsNeeded(plotState.plotConfig.type);
+
+    // Temporary probe — always write current state + guard result, for this task's verification
+    fs.writeFileSync(
+      path.join(context.extensionPath, 'regenerate-probe.txt'),
+      JSON.stringify({
+        selectedVarsOrdered: plotState.selectedVarsOrdered,
+        needed,
+        guardPassed: plotState.selectedVarsOrdered.length >= needed
+      }, null, 2)
+    );
+
+    if (plotState.selectedVarsOrdered.length < needed) return; // silent no-op
+
+    const [xVar, yVar, zVar] = plotState.selectedVarsOrdered;
+    const code = generatePlotCode(xVar, yVar, zVar ?? null, plotState.plotConfig);
+
+    const terminal = vscode.window.terminals.find(t => t.name.includes('Julia'));
+    if (!terminal) {
+      vscode.window.showWarningMessage('JuliaLab: Julia REPL terminal not found — cannot update plot.');
+      return;
+    }
+    terminal.sendText(code, true);
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('julialab.updatePlotConfig', (config?: PersistentPlotState['plotConfig']) => {
+      if (config) {
+        plotState.plotConfig = config;
+        regeneratePlot();
+      }
+    }),
+    vscode.commands.registerCommand('julialab.regeneratePlot', () => {
+      regeneratePlot();
+    })
+  );
+
+  plotVarsTreeView.onDidChangeSelection(e => {
+    const newSet = new Set(e.selection.map(v => v.name));
+    const oldSet = new Set(orderedSelection);
+
+    // Remove deselected items, preserving order of what remains
+    orderedSelection = orderedSelection.filter(name => newSet.has(name));
+
+    // Append newly-selected items (order VS Code reports them in this event)
+    for (const item of e.selection) {
+      if (!oldSet.has(item.name)) {
+        orderedSelection.push(item.name);
+      }
+    }
+
+    // Temporary probe for this task's verification only
+    fs.writeFileSync(
+      path.join(context.extensionPath, 'selection-order-probe.txt'),
+      JSON.stringify(orderedSelection, null, 2)
+    );
+
+    regeneratePlot();
+  });
+
+  // Refresh on view visibility change — simplest starting point per DESIGN §4.2
+  plotVarsTreeView.onDidChangeVisibility(async e => {
+    if (e.visible) {
+      try {
+        const EXCLUDED_NAMES = ['Base', 'Core', 'Main', 'vars'];
+        const vars = (await getWorkspaceVars()).filter(v => !EXCLUDED_NAMES.includes(v.name));
+        plotVarsProvider.refresh(vars);
+      } catch (err) {
+        console.warn('[julialab] PlotVariablesProvider visibility refresh failed:', err);
+      }
+    }
+  });
+
+  // Also refresh once immediately at activation, in case the view is
+  // already visible when the extension loads
+  (async () => {
+    try {
+      const EXCLUDED_NAMES = ['Base', 'Core', 'Main', 'vars'];
+      const vars = (await getWorkspaceVars()).filter(v => !EXCLUDED_NAMES.includes(v.name));
+      plotVarsProvider.refresh(vars);
+    } catch (err) {
+      console.warn('[julialab] PlotVariablesProvider initial refresh failed:', err);
+    }
+  })();
+
+  let spikeToggle = false;
+  context.subscriptions.push(
+    vscode.commands.registerCommand('julialab.spikeReactiveTrigger', () => {
+      const terminal = vscode.window.terminals.find(t => t.name.includes('Julia'));
+      if (!terminal) {
+        vscode.window.showWarningMessage('JuliaLab: Julia REPL terminal not found.');
+        return;
+      }
+      spikeToggle = !spikeToggle;
+      const code = spikeToggle
+        ? 'plot(θ, y, seriestype=:scatter)'
+        : 'plot(θ, y, seriestype=:line)';
+      terminal.sendText(code, true);
+    })
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('julialab.openPlotBuilder', async (config?: PlotConfig) => {

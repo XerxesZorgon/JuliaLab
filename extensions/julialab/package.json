@@ -15,6 +15,18 @@
         "title": "JuliaLab: Open Plot Builder"
       },
       {
+        "command": "julialab.spikeReactiveTrigger",
+        "title": "JuliaLab: Spike Reactive Trigger"
+      },
+      {
+        "command": "julialab.updatePlotConfig",
+        "title": "JuliaLab: Update Plot Config"
+      },
+      {
+        "command": "julialab.regeneratePlot",
+        "title": "JuliaLab: Regenerate Plot"
+      },
+      {
         "command": "julialab.focusEditor",
         "title": "JuliaLab: Focus Editor"
       },
@@ -22,7 +34,15 @@
         "command": "julialab.showPlots",
         "title": "JuliaLab: Show Plot Pane"
       }
-    ]
+    ],
+    "views": {
+      "julia-explorer": [
+        {
+          "id": "julialabPlotVariables",
+          "name": "Plot Variables"
+        }
+      ]
+    }
   },
   "scripts": {
     "compile": "tsc -p ./",

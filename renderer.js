@@ -109,6 +109,11 @@ document.addEventListener('click', e => {
       if (idx === -1) window.plotConfig.axes.push(value);
       else window.plotConfig.axes.splice(idx, 1);
     }
+    
+    window.electronAPI.ribbonCommand({
+      command: 'julialab.updatePlotConfig',
+      args: [window.plotConfig]
+    });
     return;
   }
 
@@ -121,10 +126,7 @@ document.addEventListener('click', e => {
 
   // FIGURES plot builder
   if (btn.dataset.dispatch === 'plot-builder') {
-    window.electronAPI.ribbonCommand({
-      command: 'julialab.openPlotBuilder',
-      args: [window.plotConfig]
-    });
+    window.electronAPI.ribbonCommand({ command: 'julialab.regeneratePlot' });
     return;
   }
 
