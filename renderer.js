@@ -104,10 +104,24 @@ document.addEventListener('click', e => {
       if (idx === -1) window.plotConfig.style.push(value);
       else window.plotConfig.style.splice(idx, 1);
     } else if (group === 'plot-axes') {
-      btn.classList.toggle('active');
-      const idx = window.plotConfig.axes.indexOf(value);
-      if (idx === -1) window.plotConfig.axes.push(value);
-      else window.plotConfig.axes.splice(idx, 1);
+      const GRID_GROUP = ['grid', 'xgrid', 'ygrid'];
+      if (GRID_GROUP.includes(value)) {
+        const wasActive = btn.classList.contains('active');
+        document.querySelectorAll('[data-group="plot-axes"]').forEach(b => {
+          if (GRID_GROUP.includes(b.dataset.value)) b.classList.remove('active');
+        });
+        window.plotConfig.axes = window.plotConfig.axes.filter(v => !GRID_GROUP.includes(v));
+        
+        if (!wasActive) {
+          btn.classList.add('active');
+          window.plotConfig.axes.push(value);
+        }
+      } else {
+        btn.classList.toggle('active');
+        const idx = window.plotConfig.axes.indexOf(value);
+        if (idx === -1) window.plotConfig.axes.push(value);
+        else window.plotConfig.axes.splice(idx, 1);
+      }
     }
     
     window.electronAPI.ribbonCommand({

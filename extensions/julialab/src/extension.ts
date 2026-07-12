@@ -103,7 +103,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     if (plotConfig.axes.includes('xlabel')) kwargs.push('xlabel="X"');
     if (plotConfig.axes.includes('ylabel')) kwargs.push('ylabel="Y"');
     if (plotConfig.axes.includes('legend')) kwargs.push('legend=true');
-    if (plotConfig.axes.includes('grid'))   kwargs.push('grid=true');
+    if (plotConfig.axes.includes('subtitle')) kwargs.push('subtitle="Subtitle"');
+    if (plotConfig.axes.includes('colorbar')) kwargs.push('colorbar=true');
+    if (plotConfig.axes.includes('grid')) {
+      kwargs.push('grid=true');
+    } else if (plotConfig.axes.includes('xgrid')) {
+      kwargs.push('xgrid=true');
+      kwargs.push('ygrid=false');
+    } else if (plotConfig.axes.includes('ygrid')) {
+      kwargs.push('ygrid=true');
+      kwargs.push('xgrid=false');
+    }
 
     return preamble + buildCallArgs(xVar, yVar, zVar, plotConfig, kwargs);
   }
