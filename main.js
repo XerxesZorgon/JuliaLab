@@ -65,7 +65,7 @@ const state = {
 };
 
 let plutoProcess = null;
-
+let plutoUrl = null;
 const CODIUM_BIN     = 'C:\\Program Files\\VSCodium\\bin\\codium';
 const SERVER_PORT    = 41000;
 const SERVER_DATA_DIR = path.join(__dirname, 'server-data');
@@ -264,35 +264,50 @@ function createWindow() {
     wc.sendInputEvent({ type: 'keyUp',   keyCode, modifiers });
   });
 
-  ipcMain.on('pluto:launch', () => {
+  function launchPlutoProcess() {
     if (plutoProcess && !plutoProcess.killed) {
-      console.log('[pluto] already running');
+      if (plutoUrl) shell.openExternal(plutoUrl);
       return;
     }
     const juliaExe = getJuliaExe();
     console.log('[pluto] spawning:', juliaExe);
     plutoProcess = spawn(juliaExe,
-      ['-e', 'using Pluto; Pluto.run()'],
+      ['-e', 'using Pluto; Pluto.run(launch_browser=false)'],
       { stdio: ['ignore', 'pipe', 'pipe'], detached: false }
     );
     state.childPids.add(plutoProcess.pid);
 
     let ready = false;
+    let combinedBuffer = '';
+
+    function checkForPlutoUrl(text) {
+      combinedBuffer += text;
+      if (!ready) {
+        const match = combinedBuffer.match(/https?:\/\/localhost:\d+\/\?secret=\w+/);
+        if (match) {
+          ready = true;
+          plutoUrl = match[0];
+          console.log('[pluto] server ready:', plutoUrl);
+          shell.openExternal(plutoUrl);
+        }
+      }
+    }
+
     plutoProcess.stdout.on('data', chunk => {
       const text = chunk.toString();
       process.stdout.write('[pluto] ' + text);
-      if (!ready && text.includes('localhost')) {
-        ready = true;
-        console.log('[pluto] server ready');
-      }
+      checkForPlutoUrl(text);
     });
     plutoProcess.stderr.on('data', chunk => {
-      process.stderr.write('[pluto:err] ' + chunk.toString());
+      const text = chunk.toString();
+      process.stderr.write('[pluto:err] ' + text);
+      checkForPlutoUrl(text);
     });
     plutoProcess.on('exit', code => {
       console.log('[pluto] exited with code', code);
       if (plutoProcess) state.childPids.delete(plutoProcess.pid);
       plutoProcess = null;
+      plutoUrl = null;
       if (!ready && code !== 0) {
         dialog.showErrorBox(
           'Pluto.jl — Launch Failed',
@@ -301,7 +316,10 @@ function createWindow() {
         );
       }
     });
-  });
+  }
+
+  ipcMain.on('pluto:launch', launchPlutoProcess);
+
 
   app.on('before-quit', async (e) => {
     if (state.shuttingDown) return;

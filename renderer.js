@@ -144,6 +144,8 @@ document.addEventListener('click', e => {
     return;
   }
 
+
+
   // Standard WS dispatch — skip noop
   if (!command || command === 'noop') return;
   window.electronAPI.ribbonCommand(command);
@@ -182,7 +184,9 @@ function connectEventReceiver() {
   ws.addEventListener('message', e => {
     try {
       const msg = JSON.parse(e.data);
-      if (msg.event === 'panelState' && msg.panel === 'terminal') {
+      if (msg.event === 'launchPluto') {
+        window.electronAPI.launchPluto();
+      } else if (msg.event === 'panelState' && msg.panel === 'terminal') {
         const btn = document.querySelector(
           '[data-command="workbench.action.terminal.toggleTerminal"]'
         );
@@ -203,3 +207,4 @@ function connectEventReceiver() {
 
 // Wait 6s for extension host WS server to start before connecting
 setTimeout(connectEventReceiver, 6000);
+

@@ -56,6 +56,98 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('julialab.openJuliaCommunity', () =>
       vscode.env.openExternal(
         vscode.Uri.parse('https://discourse.julialang.org/'))),
+    vscode.commands.registerCommand('julialab.openPlutoMenu', async () => {
+      const items = ['Launch Pluto', 'Documentation', 'Get Involved'];
+      const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Pluto' });
+      if (!picked) return;
+      if (picked === 'Launch Pluto') {
+        const msg = JSON.stringify({ event: 'launchPluto' });
+        connectedClients.forEach(ws => {
+          if ((ws as any).readyState === 1 /* OPEN */) {
+            ws.send(msg);
+          }
+        });
+      } else if (picked === 'Documentation') {
+        vscode.env.openExternal(vscode.Uri.parse('https://plutojl.org/en/docs/'));
+      } else if (picked === 'Get Involved') {
+        vscode.env.openExternal(vscode.Uri.parse('https://plutojl.org/en/docs/get-involved/'));
+      }
+    }),
+    vscode.commands.registerCommand('julialab.openWolframMenu', async () => {
+      const items: { label: string; action: () => void | Thenable<any> }[] = [
+        {
+          label: 'Launch Kernel',
+          action: async () => {
+            await vscode.commands.executeCommand('workbench.view.extension.wolfbook-debugger');
+            await vscode.commands.executeCommand('wolfbook.launchKernel');
+          }
+        },
+        {
+          label: 'GitHub Repository',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/vanbaalon/wolfbook'))
+        },
+        {
+          label: 'Getting Started',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/vanbaalon/wolfbook/blob/main/docs/getting-started.md'))
+        },
+        {
+          label: 'Features',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/vanbaalon/wolfbook/blob/main/docs/features.md'))
+        },
+        {
+          label: 'Best Practices',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/vanbaalon/wolfbook/blob/main/docs/best-practices.md'))
+        },
+        {
+          label: 'Report an Issue',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://github.com/vanbaalon/wolfbook/issues'))
+        },
+        {
+          label: 'Wolfram Engine (free download)',
+          action: () => vscode.env.openExternal(vscode.Uri.parse('https://wolfram.com/engine'))
+        },
+      ];
+      const picked = await vscode.window.showQuickPick(
+        items.map(i => i.label),
+        { placeHolder: 'Wolfram' }
+      );
+      if (!picked) return;
+      const item = items.find(i => i.label === picked);
+      if (item) item.action();
+    }),
+    vscode.commands.registerCommand('julialab.launchClaude', () => {
+      vscode.commands.executeCommand('claude-vscode.editor.openLast');
+    }),
+    vscode.commands.registerCommand('julialab.openLeanMenu', async () => {
+      const items = [
+        { label: 'Create Standalone Project...', command: 'lean4.project.createStandaloneProject' },
+        { label: 'Create Project Using Mathlib...', command: 'lean4.project.createMathlibProject' },
+        { label: 'Download Project...', command: 'lean4.project.clone' },
+        { label: 'Open Local Project...', command: 'lean4.project.open' },
+        { label: 'Show Documentation Resources', command: 'lean4.docs.showDocResources' },
+        { label: 'Show Manual', command: 'lean4.docs.showExtensionManual' },
+        { label: 'Show Setup Guide', command: 'lean4.docs.showSetupGuide' },
+        { label: 'Show Unicode Input Abbreviations', command: 'lean4.docs.showAbbreviations' },
+        { label: 'Find Unicode Symbol...', command: 'lean4.input.findSymbol' },
+        { label: 'Search With Loogle...', command: 'lean4.loogle.search' },
+        { label: 'Show Troubleshooting Guide', command: 'lean4.troubleshooting.showTroubleshootingGuide' },
+        { label: 'Show Troubleshooting Output', command: 'lean4.troubleshooting.showOutput' },
+        { label: 'Show Setup Information', command: 'lean4.troubleshooting.showSetupInformation' },
+        { label: 'Lean 4 Homepage', command: null, url: 'https://lean-lang.org/' },
+      ];
+      const picked = await vscode.window.showQuickPick(
+        items.map(i => i.label),
+        { placeHolder: 'Lean 4' }
+      );
+      if (!picked) return;
+      const item = items.find(i => i.label === picked);
+      if (!item) return;
+      if (item.url) {
+        vscode.env.openExternal(vscode.Uri.parse(item.url));
+      } else if (item.command) {
+        vscode.commands.executeCommand(item.command);
+      }
+    })
   );
 
   const plotVarsProvider = new PlotVariablesProvider();
