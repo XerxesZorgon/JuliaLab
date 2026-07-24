@@ -1,6 +1,6 @@
 # JuliaLab
 
-A Windows desktop IDE for scientists migrating from MATLAB to Julia. JuliaLab presents a full VSCodium workbench inside an Electron window, wrapped in a MATLAB R2023b+-style ribbon interface — so the layout feels familiar while the language underneath is Julia.
+A Windows desktop IDE for scientists migrating from MATLAB to Julia. JuliaLab presents a full VSCode workbench inside an Electron window, wrapped in a MATLAB R2023b+-style ribbon interface — so the layout feels familiar while the language underneath is Julia.
 
 **Status: early MVP, active development.** Expect rough edges. No packaged installer exists yet — see [Installation](#installation) for the build-from-source setup.
 
@@ -21,8 +21,8 @@ A single MATLAB-familiar environment with integrated support for Julia, Lean4, W
 
 | Tool | Required? | Notes |
 |---|---|---|
-| Windows 11 | Yes | Not cross-platform yet — several paths (including VSCodium's) are hardcoded to Windows locations. |
-| [VSCodium](https://vscodium.com) | Yes | Must be installed at the **default** location, `C:\Program Files\VSCodium`. JuliaLab spawns `codium serve-web` directly and does not currently search for alternate install paths. |
+| Windows 11 | Yes | Not cross-platform yet — several paths (including VSCode's) are hardcoded to Windows locations. |
+| [VSCode](https://code.visualstudio.com/) | Yes | Must be installed at the **default** location, `C:\Program Files\VSCode`. JuliaLab spawns `codium serve-web` directly and does not currently search for alternate install paths. |
 | [Node.js](https://nodejs.org) | Yes | 22.x used in development. |
 | [Git](https://git-scm.com) | Yes | To clone this repo. |
 | [Julia](https://julialang.org/downloads/) via [juliaup](https://github.com/JuliaLang/juliaup) | Yes | JuliaLab detects `juliaup`'s active release first, falling back to `julia` on PATH. |
